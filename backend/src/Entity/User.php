@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
@@ -44,17 +45,4 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getSyncCounter(): int { return $this->syncCounter; }
     public function bumpSyncCounter(): int { return ++$this->syncCounter; }
 
-    public function setEmail(string $email): static
-    {
-        $this->email = $email;
-
-        return $this;
-    }
-
-    public function setSyncCounter(string $syncCounter): static
-    {
-        $this->syncCounter = $syncCounter;
-
-        return $this;
-    }
 }

@@ -13,6 +13,10 @@ class AuthControllerTest extends WebTestCase
         $client->request('POST', '/api/register', server: ['CONTENT_TYPE' => 'application/json'],
             content: json_encode(['email' => $email, 'password' => 'secret123']));
         $this->assertResponseStatusCodeSame(201);
+        $reg = json_decode($client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('id', $reg);
+        $this->assertArrayHasKey('email', $reg);
+        $this->assertSame($email, $reg['email']);
 
         $client->request('POST', '/api/login', server: ['CONTENT_TYPE' => 'application/json'],
             content: json_encode(['email' => $email, 'password' => 'secret123']));
