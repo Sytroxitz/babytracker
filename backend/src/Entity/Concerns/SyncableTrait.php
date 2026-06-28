@@ -26,7 +26,7 @@ trait SyncableTrait
     private ?\DateTimeImmutable $deletedAt = null;
 
     #[ORM\Column(type: 'bigint')]
-    private ?int $serverSeq = null;
+    private ?string $serverSeq = null;
 
     public function getId(): Uuid { return $this->id; }
     public function setId(Uuid $id): void { $this->id = $id; }
@@ -39,12 +39,13 @@ trait SyncableTrait
     public function getDeletedAt(): ?\DateTimeImmutable { return $this->deletedAt; }
     public function setDeletedAt(?\DateTimeImmutable $t): void { $this->deletedAt = $t; }
     public function getServerSeq(): ?int { return $this->serverSeq === null ? null : (int) $this->serverSeq; }
-    public function setServerSeq(int $seq): void { $this->serverSeq = $seq; }
+    public function setServerSeq(int $seq): void { $this->serverSeq = (string) $seq; }
 
     protected function baseArray(): array
     {
         return [
             'id' => (string) $this->id,
+            'userId' => (string) $this->user->getId(),
             'occurredAt' => $this->occurredAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
             'deletedAt' => $this->deletedAt?->format(DATE_ATOM),
