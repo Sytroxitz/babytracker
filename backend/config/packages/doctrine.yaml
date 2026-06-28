@@ -30,8 +30,8 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # "TEST_TOKEN" is typically set by ParaTest
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+            # No test-db suffix: tests run against the same babytracker DB (isolated by uniqid emails)
+            dbname_suffix: ''
 
 when@prod:
     doctrine:

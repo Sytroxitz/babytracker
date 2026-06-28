@@ -9,3 +9,9 @@
 
 controllers:
     resource: routing.controllers
+
+# Route must exist so the router matches it; the security firewall's json_login
+# intercepts it before any controller runs and returns the JWT token.
+api_login:
+    path: /api/login
+    methods: [POST]

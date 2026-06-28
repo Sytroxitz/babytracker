@@ -18,3 +18,8 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+###> lexik/jwt-authentication-bundle ###
+# JWT PEM keys are committed (private project, needed for tests)
+# /config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
