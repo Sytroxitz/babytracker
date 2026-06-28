@@ -62,15 +62,18 @@ class SyncServiceTest extends KernelTestCase
         $user = $this->makeUser();
         $id = (string) Uuid::v4();
 
-        $this->sync->sync($user, 0, [
+        $r1 = $this->sync->sync($user, 0, [
             $this->change($id, '2026-06-01T12:00:00+00:00', ['side' => 'right']),
         ]);
         // Älterer Stand darf den neueren nicht überschreiben
-        $this->sync->sync($user, 0, [
+        $r2 = $this->sync->sync($user, 0, [
             $this->change($id, '2026-06-01T11:00:00+00:00', ['side' => 'left']),
         ]);
+        // A rejected (older) write must NOT advance the cursor
+        $this->assertSame($r1['cursor'], $r2['cursor']);
 
         $result = $this->sync->sync($user, 0, []);
+        $this->assertCount(1, $result['changes']);
         $this->assertSame('right', $result['changes'][0]['side']);
     }
 

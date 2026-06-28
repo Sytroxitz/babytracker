@@ -51,7 +51,7 @@ class SyncService
         $incomingUpdatedAt = new \DateTimeImmutable($change['updatedAt']);
 
         /** @var Syncable|null $entity */
-        $entity = $this->em->getRepository($class)->find($id);
+        $entity = $this->em->getRepository($class)->findOneBy(['id' => $id, 'user' => $user]);
 
         if ($entity !== null && $entity->getUpdatedAt() >= $incomingUpdatedAt) {
             return; // Last-Write-Wins: gespeicherter Stand ist gleich alt oder neuer
