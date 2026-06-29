@@ -3,6 +3,7 @@ import { createDb, getMeta, setMeta, type AppDB } from '../db/database'
 import { addLog } from '../db/repository'
 import { runSync, type PostSyncFn } from './syncEngine'
 import type { ServerChange } from '../types'
+import { AuthError } from '../api/client'
 
 let db: AppDB
 beforeEach(async () => {
@@ -82,4 +83,29 @@ test('incoming soft-delete is applied', async () => {
   await runSync(db, post)
   const after = await db.logs.get('x')
   expect(after!.deletedAt).not.toBeNull()
+})
+
+test('AuthError propagates out of runSync', async () => {
+  await setMeta(db, 'token', 'jwt.x')
+  const post: PostSyncFn = vi.fn(async () => { throw new AuthError() })
+  await expect(runSync(db, post)).rejects.toBeInstanceOf(AuthError)
+})
+
+test('no-token returns the full documented shape', async () => {
+  const post: PostSyncFn = vi.fn()
+  const res = await runSync(db, post)
+  expect(res.skipped).toBe('no-token')
+  expect(res.pushed).toBe(0)
+  expect(res.pulled).toBe(0)
+  expect(res.cursor).toBe(0)
+  expect(post).not.toHaveBeenCalled()
+})
+
+test('when local dirty wins (LWW keep-local), the cursor still advances', async () => {
+  await setMeta(db, 'token', 'jwt.x')
+  const rec = await addLog(db, { type: 'weight', occurredAt: '2026-06-01T09:00:00Z', weightGrams: 5000 })
+  const post: PostSyncFn = vi.fn(async () => ({ cursor: 3, changes: [serverChange({ id: rec.id, type: 'weight', weightGrams: 4000, serverSeq: 3, updatedAt: '2020-01-01T00:00:00+00:00' })] }))
+  await runSync(db, post)
+  expect((await db.logs.get(rec.id))!.weightGrams).toBe(5000)
+  expect(await getMeta<number>(db, 'cursor')).toBe(3)
 })
