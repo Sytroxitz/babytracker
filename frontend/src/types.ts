@@ -1,0 +1,39 @@
+export type LogType = 'nursing' | 'pumping' | 'bottle' | 'weight'
+export type Side = 'left' | 'right' | 'both'
+export type StorageLocation = 'fridge' | 'freezer'
+
+/** Flaches, in Dexie gespeichertes Record. Typ-spezifische Felder sind optional. */
+export interface LogRecord {
+  id: string
+  type: LogType
+  occurredAt: string          // ISO-8601
+  updatedAt: string           // ISO-8601 (Konfliktauflösung)
+  deletedAt: string | null    // ISO-8601 | null (Soft-Delete)
+  serverSeq: number | null    // vom Server vergeben; lokal-only = null
+  dirty: 0 | 1                // 1 = lokal geändert, noch nicht bestätigt gepusht
+  note?: string | null
+  // nursing
+  side?: Side | null
+  durationMinutes?: number | null
+  // pumping / bottle
+  amountMl?: number | null
+  storageLocation?: StorageLocation | null
+  milkType?: string | null
+  // weight
+  weightGrams?: number | null
+}
+
+/** Vom Server geliefertes Change-Objekt (wie LogRecord, aber ohne lokale Flags). */
+export type ServerChange = Omit<LogRecord, 'dirty'> & { userId: string }
+
+export interface SyncResponse {
+  cursor: number
+  changes: ServerChange[]
+}
+
+/** Eingaben aus den Schnell-Erfassen-Formularen (typ-diskriminiert). */
+export type NewLogInput =
+  | { type: 'nursing'; occurredAt: string; side: Side; durationMinutes?: number | null; note?: string | null }
+  | { type: 'pumping'; occurredAt: string; amountMl: number; side?: Side | null; storageLocation?: StorageLocation | null; note?: string | null }
+  | { type: 'bottle'; occurredAt: string; amountMl: number; note?: string | null }
+  | { type: 'weight'; occurredAt: string; weightGrams: number; note?: string | null }
