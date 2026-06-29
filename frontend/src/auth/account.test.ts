@@ -82,4 +82,25 @@ describe('reconcileAccount', () => {
     expect(await getMeta<number>(db, 'cursor')).toBe(0)
     expect(await getMeta<string>(db, 'accountId')).toBe('b@c.de')
   })
+
+  test('same account with different casing/whitespace does NOT wipe', async () => {
+    await reconcileAccount(db, 'User@Example.com')
+    await db.logs.put({
+      id: 'x',
+      type: 'weight',
+      occurredAt: '2026-06-01T10:00:00Z',
+      updatedAt: '2026-06-01T10:00:00Z',
+      deletedAt: null,
+      serverSeq: null,
+      dirty: 1,
+      weightGrams: 4000,
+    })
+    await setMeta(db, 'cursor', 5)
+
+    await reconcileAccount(db, '  user@example.com  ')
+
+    expect(await db.logs.count()).toBe(1)
+    expect(await getMeta<number>(db, 'cursor')).toBe(5)
+    expect(await getMeta<string>(db, 'accountId')).toBe('user@example.com')
+  })
 })
