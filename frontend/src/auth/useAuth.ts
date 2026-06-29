@@ -9,7 +9,7 @@ export function useAuth() {
 
   useEffect(() => {
     void getMeta<string>(db, 'token').then((t) => {
-      setToken(t ?? null)
+      setToken(t || null)
       setReady(true)
     })
   }, [])
