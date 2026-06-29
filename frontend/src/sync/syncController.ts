@@ -11,8 +11,13 @@ export class SyncController {
   private queued = false
   private listeners = new Set<() => void>()
   private onOnline = () => { void this.requestSync() }
+  private db: AppDB
+  private postSync: PostSyncFn
 
-  constructor(private db: AppDB = defaultDb, private postSync: PostSyncFn = realPostSync) {}
+  constructor(db: AppDB = defaultDb, postSync: PostSyncFn = realPostSync) {
+    this.db = db
+    this.postSync = postSync
+  }
 
   onChange(cb: () => void): () => void {
     this.listeners.add(cb)

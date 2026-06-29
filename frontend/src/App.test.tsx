@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import App from './App'
 
-test('renders the app title', () => {
+test('renders the app title', async () => {
   render(<App />)
-  expect(screen.getByText('BabyTracker')).toBeInTheDocument()
+  expect(await screen.findByText('BabyTracker')).toBeInTheDocument()
 })

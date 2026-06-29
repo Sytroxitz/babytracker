@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { register, login, postSync, ApiError, AuthError } from './client'
 
 function mockFetch(status: number, json: unknown) {
-  return vi.fn(async () =>
+  return vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
     new Response(JSON.stringify(json), { status, headers: { 'Content-Type': 'application/json' } }),
   )
 }
@@ -22,7 +22,7 @@ test('postSync sends Bearer token and returns cursor+changes', async () => {
   const res = await postSync('jwt.x', { since: 0, changes: [] })
   expect(res.cursor).toBe(3)
   const [, init] = f.mock.calls[0]
-  expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer jwt.x' })
+  expect((init as unknown as RequestInit).headers).toMatchObject({ Authorization: 'Bearer jwt.x' })
 })
 
 test('401 throws AuthError', async () => {
