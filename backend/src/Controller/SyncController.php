@@ -19,6 +19,9 @@ class SyncController
         $payload = json_decode($request->getContent(), true) ?? [];
         $since = (int) ($payload['since'] ?? 0);
         $changes = $payload['changes'] ?? [];
+        if (!is_array($changes)) {
+            $changes = [];
+        }
 
         $result = $syncService->sync($user, $since, $changes);
 

@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'weight_log')]
+#[ORM\UniqueConstraint(name: 'uniq_weight_log_user_seq', columns: ['user_id', 'server_seq'])]
 class WeightLog implements Syncable
 {
     use SyncableTrait;

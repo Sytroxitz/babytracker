@@ -30,6 +30,7 @@ class SyncService
     public function sync(User $user, int $since, array $changes): array
     {
         $this->em->wrapInTransaction(function () use ($user, $changes) {
+            $this->em->lock($user, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
             foreach ($changes as $change) {
                 $this->applyChange($user, $change);
             }

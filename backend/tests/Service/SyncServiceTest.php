@@ -77,6 +77,76 @@ class SyncServiceTest extends KernelTestCase
         $this->assertSame('right', $result['changes'][0]['side']);
     }
 
+    public function testNewerIncomingOverwritesAndBumpsCursor(): void
+    {
+        $user = $this->makeUser();
+        $id = (string) Uuid::v4();
+
+        // First sync: insert with side 'left' at T1
+        $r1 = $this->sync->sync($user, 0, [
+            $this->change($id, '2026-06-01T10:00:00+00:00', ['side' => 'left']),
+        ]);
+        $cursorAfterFirst = $r1['cursor'];
+        $this->assertSame(1, $cursorAfterFirst);
+
+        // Second sync: NEWER change for same id, side 'right' at T2 > T1
+        $r2 = $this->sync->sync($user, 0, [
+            $this->change($id, '2026-06-01T11:00:00+00:00', ['side' => 'right']),
+        ]);
+
+        // (a) stored side is now 'right'
+        $allChanges = $this->sync->sync($user, 0, [])['changes'];
+        $this->assertSame('right', $allChanges[0]['side']);
+
+        // (b) cursor advanced (second serverSeq assigned, cursor == 2)
+        $this->assertSame(2, $r2['cursor']);
+
+        // (c) a pull since the first cursor returns the updated row
+        $pullSinceFirst = $this->sync->sync($user, $cursorAfterFirst, [])['changes'];
+        $this->assertCount(1, $pullSinceFirst);
+        $this->assertSame($id, $pullSinceFirst[0]['id']);
+        $this->assertSame('right', $pullSinceFirst[0]['side']);
+    }
+
+    public function testBottleAndWeightRoundTrip(): void
+    {
+        $user = $this->makeUser();
+        $bottleId = (string) Uuid::v4();
+        $weightId = (string) Uuid::v4();
+
+        $result = $this->sync->sync($user, 0, [
+            [
+                'type' => 'bottle',
+                'id' => $bottleId,
+                'occurredAt' => '2026-06-01T08:00:00+00:00',
+                'updatedAt' => '2026-06-01T08:00:00+00:00',
+                'deletedAt' => null,
+                'amountMl' => 90,
+            ],
+            [
+                'type' => 'weight',
+                'id' => $weightId,
+                'occurredAt' => '2026-06-01T09:00:00+00:00',
+                'updatedAt' => '2026-06-01T09:00:00+00:00',
+                'deletedAt' => null,
+                'weightGrams' => 4200,
+            ],
+        ]);
+
+        $this->assertCount(2, $result['changes']);
+
+        $byType = [];
+        foreach ($result['changes'] as $c) {
+            $byType[$c['type']] = $c;
+        }
+
+        $this->assertArrayHasKey('bottle', $byType);
+        $this->assertArrayHasKey('weight', $byType);
+        $this->assertSame(90, $byType['bottle']['amountMl']);
+        $this->assertSame('breastmilk', $byType['bottle']['milkType']);
+        $this->assertSame(4200, $byType['weight']['weightGrams']);
+    }
+
     public function testDeletePropagatesAndCursorFilters(): void
     {
         $user = $this->makeUser();
