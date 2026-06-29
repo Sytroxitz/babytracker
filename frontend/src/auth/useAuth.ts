@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { db, getMeta, setMeta } from '../db/database'
 import { login as apiLogin, register as apiRegister } from '../api/client'
 import { syncController } from '../sync/syncController'
+import { reconcileAccount } from './account'
 
 export function useAuth() {
   const [token, setToken] = useState<string | null>(null)
@@ -14,7 +15,8 @@ export function useAuth() {
     })
   }, [])
 
-  async function persist(t: string) {
+  async function persist(t: string, email: string) {
+    await reconcileAccount(db, email)
     await setMeta(db, 'token', t)
     setToken(t)
     void syncController.requestSync()
@@ -25,12 +27,12 @@ export function useAuth() {
     ready,
     async signIn(email: string, password: string) {
       const { token: t } = await apiLogin(email, password)
-      await persist(t)
+      await persist(t, email)
     },
     async signUp(email: string, password: string) {
       await apiRegister(email, password)
       const { token: t } = await apiLogin(email, password)
-      await persist(t)
+      await persist(t, email)
     },
     async signOut() {
       await setMeta(db, 'token', '')
