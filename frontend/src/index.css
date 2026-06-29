@@ -1,5 +1,98 @@
 @import "tailwindcss";
 
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0f;
+  --surface: 23 23 30;        /* rgb for neutral-ish surface */
+  --accent: 99 102 241;       /* indigo-500 */
+}
+
 html, body, #root { height: 100%; }
-body { @apply bg-neutral-950 text-neutral-100; margin: 0; }
+
+body {
+  margin: 0;
+  color: rgb(245 245 245);
+  background:
+    radial-gradient(900px 600px at 80% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
+    radial-gradient(700px 500px at 0% 110%, rgba(244, 114, 182, 0.08), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Make every native control inherit the dark, rounded look and animate smoothly */
+input, button, select, textarea { font: inherit; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* ---- keyframes ---- */
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes pop-in { 0% { opacity: 0; transform: scale(0.94) } 100% { opacity: 1; transform: none } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-8px) } to { opacity: 1; transform: none } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes draw { to { stroke-dashoffset: 0 } }
+@keyframes toast-in { 0% { opacity: 0; transform: translate(-50%, 12px) scale(0.96) } 100% { opacity: 1; transform: translate(-50%, 0) scale(1) } }
+@keyframes check-pop { 0% { transform: scale(0) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
+
+.animate-fade-in { animation: fade-in 0.25s ease both; }
+.animate-fade-in-up { animation: fade-in-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-pop { animation: pop-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-slide-down { animation: slide-down 0.28s ease both; }
+.animate-toast { animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* staggered list children */
+.stagger > * { animation: fade-in-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s }
+.stagger > *:nth-child(2) { animation-delay: 0.06s }
+.stagger > *:nth-child(3) { animation-delay: 0.10s }
+.stagger > *:nth-child(4) { animation-delay: 0.14s }
+.stagger > *:nth-child(5) { animation-delay: 0.18s }
+.stagger > *:nth-child(n+6) { animation-delay: 0.22s }
+
+.spin { animation: spin 0.7s linear infinite; }
+
+/* ---- reusable surfaces ---- */
+.card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+/* form fields: consistent, with a clear focus ring (visible feedback) */
+.field {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 1rem;
+  font-size: 1.05rem;
+  color: rgb(245 245 245);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.field::placeholder { color: rgb(115 115 125); }
+.field:focus {
+  border-color: rgb(129 140 248);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
+}
+
+/* nicer scrollbar on desktop */
+.scroll-area { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+.scroll-area::-webkit-scrollbar { width: 8px; }
+.scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 99px; }
+
+/* safe-area helpers for installed/mobile */
+.pb-safe { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+.h-nav { height: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
