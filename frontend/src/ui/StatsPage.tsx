@@ -3,6 +3,12 @@ import { db, getMeta, setMeta } from '../db/database'
 import { getLogsSince } from '../db/repository'
 import type { LogRecord } from '../types'
 import { computeFeedingStats, formatDuration, formatRelative } from './stats'
+import { notificationPermission, notificationsSupported } from '../notifications'
+
+interface Props {
+  remindersEnabled: boolean
+  onToggleReminders: () => void | Promise<void>
+}
 
 const INTERVAL_KEY = 'feedIntervalMin'
 const DEFAULT_INTERVAL = 180
@@ -28,7 +34,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   )
 }
 
-export function StatsPage() {
+export function StatsPage({ remindersEnabled, onToggleReminders }: Props) {
   const now = useNow()
   const [logs, setLogs] = useState<LogRecord[]>([])
   const [intervalMin, setIntervalMin] = useState(DEFAULT_INTERVAL)
@@ -88,6 +94,45 @@ export function StatsPage() {
           Noch keine Mahlzeit erfasst – trag eine im Tab „Erfassen" ein, dann erscheint hier die Prognose.
         </div>
       )}
+
+      {/* Reminders */}
+      <div className="card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-neutral-300">Erinnerungen</div>
+            <div className="text-xs text-neutral-500 mt-0.5">
+              {!notificationsSupported()
+                ? 'Von diesem Browser nicht unterstützt.'
+                : notificationPermission() === 'denied'
+                  ? 'In den Browser-Einstellungen blockiert – dort wieder erlauben.'
+                  : remindersEnabled
+                    ? 'Du wirst erinnert, wenn die nächste Mahlzeit fällig ist – und falls länger nichts eingetragen wurde.'
+                    : 'Benachrichtigung, wenn die nächste Mahlzeit fällig ist.'}
+            </div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={remindersEnabled}
+            aria-label="Erinnerungen"
+            onClick={() => void onToggleReminders()}
+            disabled={!notificationsSupported() || notificationPermission() === 'denied'}
+            className={`relative h-7 w-12 rounded-full transition-colors shrink-0 disabled:opacity-40 ${
+              remindersEnabled ? 'bg-indigo-600' : 'bg-white/15'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white transition-transform ${
+                remindersEnabled ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+        {remindersEnabled && (
+          <p className="text-[11px] text-neutral-500 mt-2">
+            Hinweis: Erinnerungen kommen zuverlässig, solange die App geöffnet ist (auch im Hintergrund-Tab).
+          </p>
+        )}
+      </div>
 
       {/* Interval setting */}
       <div className="card p-4">

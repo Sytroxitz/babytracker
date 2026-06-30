@@ -1,5 +1,12 @@
 import { expect, test } from 'vitest'
-import { computeFeedingStats, formatDuration, formatRelative } from './stats'
+import {
+  computeFeedingStats,
+  decideReminders,
+  formatDuration,
+  formatRelative,
+  lastEntryAt,
+  lastSide,
+} from './stats'
 import type { LogRecord } from '../types'
 
 /** ISO string for a LOCAL date (timezone-independent test assertions). */
@@ -64,4 +71,47 @@ test('formatRelative describes future and overdue', () => {
   expect(formatRelative(now + 80 * 60000, now)).toEqual({ text: 'in 1 Std 20 Min', overdue: false })
   expect(formatRelative(now - 10 * 60000, now)).toEqual({ text: 'überfällig seit 10 Min', overdue: true })
   expect(formatRelative(now, now).text).toBe('jetzt fällig')
+})
+
+test('lastSide returns the most recent side and recommends the opposite', () => {
+  const logs: LogRecord[] = [
+    rec({ type: 'nursing', occurredAt: at(8), side: 'left' }),
+    rec({ type: 'pumping', occurredAt: at(11), side: 'right', amountMl: 100 }), // most recent with side
+    rec({ type: 'bottle', occurredAt: at(12), amountMl: 90 }), // no side, ignored
+  ]
+  const info = lastSide(logs)
+  expect(info.lastSide).toBe('right')
+  expect(info.lastType).toBe('pumping')
+  expect(info.recommended).toBe('left')
+})
+
+test('lastSide ignores deleted entries and handles none/both', () => {
+  expect(lastSide([]).recommended).toBeNull()
+  const both = lastSide([rec({ type: 'nursing', occurredAt: at(9), side: 'both' })])
+  expect(both.lastSide).toBe('both')
+  expect(both.recommended).toBeNull()
+  const deleted = lastSide([rec({ type: 'nursing', occurredAt: at(10), side: 'left', deletedAt: at(10) })])
+  expect(deleted.lastSide).toBeNull()
+})
+
+test('lastEntryAt returns the newest non-deleted occurredAt', () => {
+  const logs: LogRecord[] = [
+    rec({ type: 'bottle', occurredAt: at(8), amountMl: 90 }),
+    rec({ type: 'nursing', occurredAt: at(15), side: 'left' }),
+    rec({ type: 'bottle', occurredAt: at(20), amountMl: 90, deletedAt: at(20) }),
+  ]
+  expect(lastEntryAt(logs)).toBe(at(15))
+  expect(lastEntryAt([])).toBeNull()
+})
+
+test('decideReminders flags feeding-due and inactivity', () => {
+  const now = NOW.getTime()
+  // feeding due when next feed time has passed
+  expect(decideReminders({ nextFeedAtMs: now - 1, lastEntryAtMs: now, intervalMin: 180, nowMs: now }).feedingDue).toBe(true)
+  expect(decideReminders({ nextFeedAtMs: now + 60000, lastEntryAtMs: now, intervalMin: 180, nowMs: now }).feedingDue).toBe(false)
+  // inactivity when last entry older than interval + 45 min
+  const stale = now - (180 + 46) * 60000
+  expect(decideReminders({ nextFeedAtMs: null, lastEntryAtMs: stale, intervalMin: 180, nowMs: now }).inactivity).toBe(true)
+  const fresh = now - 30 * 60000
+  expect(decideReminders({ nextFeedAtMs: null, lastEntryAtMs: fresh, intervalMin: 180, nowMs: now }).inactivity).toBe(false)
 })

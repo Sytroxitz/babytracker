@@ -75,6 +75,60 @@ export function computeFeedingStats(
   }
 }
 
+export interface SideInfo {
+  lastSide: 'left' | 'right' | 'both' | null
+  lastType: 'nursing' | 'pumping' | null
+  lastAt: string | null
+  /** Recommended next side (the opposite of the last left/right); null if last was "both" or none. */
+  recommended: 'left' | 'right' | null
+}
+
+/** Most recent nursing/pumping side and the recommended next side (opposite). */
+export function lastSide(logs: LogRecord[]): SideInfo {
+  const withSide = logs
+    .filter(
+      (r) =>
+        (r.type === 'nursing' || r.type === 'pumping') &&
+        r.deletedAt === null &&
+        (r.side === 'left' || r.side === 'right' || r.side === 'both'),
+    )
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+  const last = withSide[0]
+  if (!last) return { lastSide: null, lastType: null, lastAt: null, recommended: null }
+  const recommended = last.side === 'left' ? 'right' : last.side === 'right' ? 'left' : null
+  return {
+    lastSide: last.side as 'left' | 'right' | 'both',
+    lastType: last.type as 'nursing' | 'pumping',
+    lastAt: last.occurredAt,
+    recommended,
+  }
+}
+
+/** Latest occurredAt across all non-deleted logs (for the "you haven't logged" reminder). */
+export function lastEntryAt(logs: LogRecord[]): string | null {
+  const active = logs.filter((r) => r.deletedAt === null)
+  if (active.length === 0) return null
+  return active.reduce((max, r) => (Date.parse(r.occurredAt) > Date.parse(max) ? r.occurredAt : max), active[0].occurredAt)
+}
+
+export interface ReminderDecision {
+  feedingDue: boolean
+  inactivity: boolean
+}
+
+/** Pure decision: which reminders are currently due. */
+export function decideReminders(opts: {
+  nextFeedAtMs: number | null
+  lastEntryAtMs: number | null
+  intervalMin: number
+  nowMs: number
+}): ReminderDecision {
+  const feedingDue = opts.nextFeedAtMs != null && opts.nextFeedAtMs <= opts.nowMs
+  const inactivity =
+    opts.lastEntryAtMs != null && opts.nowMs - opts.lastEntryAtMs > (opts.intervalMin + 45) * 60000
+  return { feedingDue, inactivity }
+}
+
 /** Formats minutes as e.g. "3 Std 15 Min" or "45 Min". */
 export function formatDuration(min: number): string {
   const h = Math.floor(min / 60)

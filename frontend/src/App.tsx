@@ -7,6 +7,9 @@ import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
 import { StatsPage } from './ui/StatsPage'
 import { syncController } from './sync/syncController'
+import { db, getMeta, setMeta } from './db/database'
+import { useReminders } from './sync/useReminders'
+import { notificationPermission, requestNotificationPermission } from './notifications'
 
 type Tab = 'entry' | 'timeline' | 'stats' | 'weight'
 
@@ -69,6 +72,7 @@ export default function App() {
   const auth = useAuth()
   const [tab, setTab] = useState<Tab>('entry')
   const [needsRelogin, setNeedsRelogin] = useState(false)
+  const [remindersEnabled, setRemindersEnabled] = useState(false)
   const online = useOnline()
 
   useEffect(() => {
@@ -80,6 +84,26 @@ export default function App() {
       syncController.stop()
     }
   }, [auth.token])
+
+  useEffect(() => {
+    void getMeta<boolean>(db, 'remindersEnabled').then((v) =>
+      setRemindersEnabled(v === true && notificationPermission() === 'granted'),
+    )
+  }, [])
+
+  useReminders(remindersEnabled && !!auth.token)
+
+  async function toggleReminders() {
+    if (remindersEnabled) {
+      setRemindersEnabled(false)
+      await setMeta(db, 'remindersEnabled', false)
+      return
+    }
+    const perm = await requestNotificationPermission()
+    const granted = perm === 'granted'
+    setRemindersEnabled(granted)
+    await setMeta(db, 'remindersEnabled', granted)
+  }
 
   if (!auth.ready) return null
   if (!auth.token) return <AuthScreen onSignIn={auth.signIn} onSignUp={auth.signUp} />
@@ -126,7 +150,9 @@ export default function App() {
         <div key={tab} className="animate-fade-in-up">
           {tab === 'entry' && <QuickEntry />}
           {tab === 'timeline' && <Timeline />}
-          {tab === 'stats' && <StatsPage />}
+          {tab === 'stats' && (
+            <StatsPage remindersEnabled={remindersEnabled} onToggleReminders={toggleReminders} />
+          )}
           {tab === 'weight' && <WeightPage />}
         </div>
       </main>
