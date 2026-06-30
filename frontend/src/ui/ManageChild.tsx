@@ -13,6 +13,8 @@ interface Props {
   onChanged: () => void
 }
 
+const ROLE_LABEL: Record<string, string> = { mama: 'Mama', papa: 'Papa' }
+
 export function ManageChild({ child, token, onClose, onChanged }: Props) {
   // Form state — prefilled from child prop
   const [name, setName] = useState(child.name)
@@ -28,6 +30,10 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
   const [inviteExpiry, setInviteExpiry] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Danger-zone busy flags
+  const [deleting, setDeleting] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   // Confirmation dialogs
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -81,11 +87,13 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
         setTimeout(() => setCopied(false), 2000)
       }
     } catch {
-      // clipboard unavailable (e.g. non-secure context) — silent
+      setError('Kopieren fehlgeschlagen')
     }
   }
 
   async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
     setError(null)
     try {
       await deleteChild(token, child.id)
@@ -94,10 +102,14 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Löschen')
+    } finally {
+      setDeleting(false)
     }
   }
 
   async function handleLeave() {
+    if (leaving) return
+    setLeaving(true)
     setError(null)
     try {
       await leaveChild(token, child.id)
@@ -106,6 +118,8 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Verlassen')
+    } finally {
+      setLeaving(false)
     }
   }
 
@@ -221,7 +235,7 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
                 >
                   <span className="text-sm text-neutral-200 truncate">{m.email}</span>
                   <span className="text-xs text-neutral-500 ml-2 shrink-0">
-                    {m.role === 'mama' ? 'Mama' : 'Papa'}
+                    {ROLE_LABEL[m.role] ?? m.role}
                   </span>
                 </li>
               ))}
@@ -296,14 +310,16 @@ export function ManageChild({ child, token, onClose, onChanged }: Props) {
           <button
             type="button"
             onClick={() => setConfirmLeave(true)}
-            className="min-h-12 rounded-2xl bg-white/5 text-neutral-300 hover:bg-white/10 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500/40"
+            disabled={leaving}
+            className="min-h-12 rounded-2xl bg-white/5 text-neutral-300 hover:bg-white/10 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Kind verlassen
           </button>
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="min-h-12 rounded-2xl bg-red-600/15 text-red-400 hover:bg-red-600/25 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+            disabled={deleting}
+            className="min-h-12 rounded-2xl bg-red-600/15 text-red-400 hover:bg-red-600/25 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Kind löschen
           </button>
