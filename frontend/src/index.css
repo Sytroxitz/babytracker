@@ -99,6 +99,28 @@ select.field optgroup {
   color: rgb(245 245 245);
 }
 
+/* date / datetime inputs: recolor the native picker icon to the same muted grey
+   as the select chevron so they sit consistently with the other fields. */
+input[type="date"].field,
+input[type="datetime-local"].field,
+input[type="time"].field {
+  cursor: pointer;
+}
+input[type="date"].field::-webkit-calendar-picker-indicator,
+input[type="datetime-local"].field::-webkit-calendar-picker-indicator,
+input[type="time"].field::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  /* flatten the browser glyph to a uniform muted grey (~#a3a3a3) */
+  filter: brightness(0) invert(0.66);
+  transition: opacity 0.15s ease;
+}
+input[type="date"].field::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"].field::-webkit-calendar-picker-indicator:hover,
+input[type="time"].field::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
+}
+
 /* nicer scrollbar on desktop */
 .scroll-area { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
 .scroll-area::-webkit-scrollbar { width: 8px; }
