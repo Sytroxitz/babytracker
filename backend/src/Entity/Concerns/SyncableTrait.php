@@ -18,7 +18,7 @@ trait SyncableTrait
     private Child $child;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $createdBy = null;
 
     #[ORM\Column(type: 'datetime_immutable')]

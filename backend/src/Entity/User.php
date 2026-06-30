@@ -25,9 +25,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private string $password;
 
-    #[ORM\Column(type: 'bigint', options: ['default' => 0])]
-    private int $syncCounter = 0;
-
     public function __construct(string $email)
     {
         $this->id = Uuid::v4();
@@ -41,8 +38,4 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getPassword(): string { return $this->password; }
     public function setPassword(string $hash): void { $this->password = $hash; }
     public function eraseCredentials(): void {}
-
-    public function getSyncCounter(): int { return $this->syncCounter; }
-    public function bumpSyncCounter(): int { return ++$this->syncCounter; }
-
 }
