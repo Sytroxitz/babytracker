@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { Gender, Role } from '../types'
 import { createChild, acceptInvitation, AuthError } from '../api/client'
-import { db } from '../db/database'
+import { db, getMeta } from '../db/database'
+import { addLog } from '../db/repository'
+import { syncController } from '../sync/syncController'
 import { Button } from './components/Button'
 
 export function Onboarding({
@@ -28,17 +30,31 @@ export function Onboarding({
     setBusy(true)
     setError(null)
     try {
+      const birthWeightGrams = weight ? Number(weight) : null
       const res =
         mode === 'create'
           ? await createChild(token, {
               name,
               gender,
               birthDate,
-              birthWeightGrams: weight ? Number(weight) : null,
+              birthWeightGrams,
               role,
             })
           : await acceptInvitation(token, code.trim().toUpperCase(), role)
       await db.children.put(res.child)
+
+      // Seed the birth weight as the first weight entry so it shows up in the
+      // weight chart right away (create flow only).
+      if (mode === 'create' && birthWeightGrams && birthWeightGrams > 0) {
+        const myUserId = (await getMeta<string>(db, 'myUserId')) ?? null
+        await addLog(db, res.child.id, myUserId, {
+          type: 'weight',
+          occurredAt: birthDate ? new Date(birthDate).toISOString() : new Date().toISOString(),
+          weightGrams: birthWeightGrams,
+          note: 'Geburtsgewicht',
+        })
+        void syncController.requestSync()
+      }
       onDone()
     } catch (e) {
       // An invalid/expired token can't be recovered here — the user must
@@ -116,7 +132,7 @@ export function Onboarding({
                   aria-label="Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="z. B. Mia"
+                  placeholder="z. B. Rose"
                   className="field"
                 />
               </div>
