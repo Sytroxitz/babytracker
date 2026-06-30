@@ -70,7 +70,7 @@ class ChildController
     public function update(string $id, Request $request): JsonResponse
     {
         $child = $this->children->find($id);
-        if ($child === null || $this->requireMember($child) === null) {
+        if ($child === null || $child->getDeletedAt() !== null || $this->requireMember($child) === null) {
             return new JsonResponse(['error' => 'not found'], 404);
         }
         $d = json_decode($request->getContent(), true) ?? [];
@@ -89,7 +89,7 @@ class ChildController
     public function delete(string $id): JsonResponse
     {
         $child = $this->children->find($id);
-        if ($child === null || $this->requireMember($child) === null) {
+        if ($child === null || $child->getDeletedAt() !== null || $this->requireMember($child) === null) {
             return new JsonResponse(['error' => 'not found'], 404);
         }
         $child->setDeletedAt(new \DateTimeImmutable());
@@ -101,7 +101,7 @@ class ChildController
     public function invite(string $id, InvitationCodeGenerator $gen): JsonResponse
     {
         $child = $this->children->find($id);
-        if ($child === null || $this->requireMember($child) === null) {
+        if ($child === null || $child->getDeletedAt() !== null || $this->requireMember($child) === null) {
             return new JsonResponse(['error' => 'not found'], 404);
         }
         do { $code = $gen->generate(); } while ($this->invitations->findOneByCode($code) !== null);
@@ -119,16 +119,20 @@ class ChildController
             return new JsonResponse(['error' => 'invalid or expired code'], 404);
         }
         $child = $inv->getChild();
+        if ($child->getDeletedAt() !== null) {
+            return new JsonResponse(['error' => 'invalid or expired code'], 404);
+        }
         $d = json_decode($request->getContent(), true) ?? [];
         if (empty($d['role']) || !in_array($d['role'], self::VALID_ROLES, true)) {
             return new JsonResponse(['error' => 'role must be one of: ' . implode(', ', self::VALID_ROLES)], 400);
         }
         $role = $d['role'];
-        if ($this->memberships->findOneByChildAndUser($child, $this->user()) === null) {
+        $existing = $this->memberships->findOneByChildAndUser($child, $this->user());
+        if ($existing === null) {
             $this->em->persist(new ChildMembership($child, $this->user(), $role));
+            $inv->markUsed($this->user());
+            $this->em->flush();
         }
-        $inv->markUsed($this->user());
-        $this->em->flush();
         return new JsonResponse(['child' => $child->toArray($this->memberList($child))]);
     }
 
@@ -136,7 +140,7 @@ class ChildController
     public function leave(string $id): JsonResponse
     {
         $child = $this->children->find($id);
-        if ($child === null) { return new JsonResponse(['error' => 'not found'], 404); }
+        if ($child === null || $child->getDeletedAt() !== null) { return new JsonResponse(['error' => 'not found'], 404); }
         $m = $this->requireMember($child);
         if ($m === null) { return new JsonResponse(['error' => 'not found'], 404); }
         $this->em->remove($m);
