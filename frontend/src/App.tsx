@@ -137,7 +137,13 @@ export default function App() {
 
   if (!children.ready) return null
   if (children.children.length === 0)
-    return <Onboarding token={auth.token} onDone={() => void children.refresh()} />
+    return (
+      <Onboarding
+        token={auth.token}
+        onDone={() => void children.refresh()}
+        onSignOut={auth.signOut}
+      />
+    )
 
   const activeChild = children.activeChild!
 
@@ -251,6 +257,7 @@ export default function App() {
               void children.refresh()
               setAddingChild(false)
             }}
+            onSignOut={auth.signOut}
           />
         </div>
       )}

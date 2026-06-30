@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import type { Gender, Role } from '../types'
-import { createChild, acceptInvitation } from '../api/client'
+import { createChild, acceptInvitation, AuthError } from '../api/client'
 import { db } from '../db/database'
 import { Button } from './components/Button'
 
-export function Onboarding({ token, onDone }: { token: string; onDone: () => void }) {
+export function Onboarding({
+  token,
+  onDone,
+  onSignOut,
+}: {
+  token: string
+  onDone: () => void
+  onSignOut?: () => void
+}) {
   const [mode, setMode] = useState<'create' | 'join'>('create')
   const [name, setName] = useState('')
   const [gender, setGender] = useState<Gender>('female')
@@ -14,6 +22,7 @@ export function Onboarding({ token, onDone }: { token: string; onDone: () => voi
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionInvalid, setSessionInvalid] = useState(false)
 
   async function submit() {
     setBusy(true)
@@ -32,7 +41,10 @@ export function Onboarding({ token, onDone }: { token: string; onDone: () => voi
       await db.children.put(res.child)
       onDone()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler')
+      // An invalid/expired token can't be recovered here — the user must
+      // re-authenticate. Surface a clear re-login path instead of a raw error.
+      if (e instanceof AuthError) setSessionInvalid(true)
+      else setError(e instanceof Error ? e.message : 'Fehler')
     } finally {
       setBusy(false)
     }
@@ -188,6 +200,20 @@ export function Onboarding({ token, onDone }: { token: string; onDone: () => voi
             </select>
           </div>
 
+          {sessionInvalid && (
+            <div className="animate-slide-down rounded-xl bg-amber-500/12 border border-amber-500/25 text-amber-200 text-sm px-3 py-3">
+              <p className="flex items-start gap-2">
+                <span aria-hidden="true">⚠️</span>
+                <span>Deine Sitzung ist abgelaufen oder ungültig. Bitte melde dich neu an.</span>
+              </p>
+              {onSignOut && (
+                <Button type="button" onClick={onSignOut} className="mt-3 w-full">
+                  Neu anmelden
+                </Button>
+              )}
+            </div>
+          )}
+
           {error && (
             <p className="animate-slide-down flex items-start gap-2 rounded-xl bg-red-500/12 border border-red-500/25 text-red-300 text-sm px-3 py-2.5">
               <span aria-hidden="true">⚠️</span>
@@ -195,14 +221,26 @@ export function Onboarding({ token, onDone }: { token: string; onDone: () => voi
             </p>
           )}
 
-          <Button
-            type="button"
-            loading={busy}
-            onClick={submit}
-            className="mt-1 w-full"
-          >
-            {mode === 'create' ? 'Anlegen' : 'Beitreten'}
-          </Button>
+          {!sessionInvalid && (
+            <Button
+              type="button"
+              loading={busy}
+              onClick={submit}
+              className="mt-1 w-full"
+            >
+              {mode === 'create' ? 'Anlegen' : 'Beitreten'}
+            </Button>
+          )}
+
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="mx-auto text-sm text-neutral-500 hover:text-neutral-300 underline-offset-2 hover:underline transition"
+            >
+              Abmelden
+            </button>
+          )}
         </div>
       </div>
     </main>

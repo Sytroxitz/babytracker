@@ -14,7 +14,7 @@ test('renders the auth title when signed out', async () => {
 })
 
 test('shows onboarding when authed but no children', async () => {
-  await setMeta(db, 'token', 't1')
+  await setMeta(db, 'token', 'eyJhbG.eyJzdWI.sig123') // well-formed JWT shape
   await db.children.clear()
   render(<App />)
   await waitFor(() => expect(screen.getByText(/Willkommen/)).toBeInTheDocument())

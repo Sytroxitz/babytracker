@@ -19,3 +19,17 @@ test('creates first child and calls onDone', async () => {
   expect(await db.children.get('c1')).toBeTruthy()
   await db.children.clear()
 })
+
+test('offers re-login when the token is invalid (AuthError)', async () => {
+  vi.spyOn(api, 'createChild').mockRejectedValue(new api.AuthError())
+  const onSignOut = vi.fn()
+  render(<Onboarding token="bad" onDone={() => {}} onSignOut={onSignOut} />)
+
+  fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Mia' } })
+  fireEvent.change(screen.getByLabelText(/geburtsdatum/i), { target: { value: '2026-01-01' } })
+  fireEvent.click(screen.getByRole('button', { name: /anlegen/i }))
+
+  const relogin = await screen.findByRole('button', { name: /neu anmelden/i })
+  fireEvent.click(relogin)
+  expect(onSignOut).toHaveBeenCalled()
+})
