@@ -25,21 +25,32 @@ async function mergeIncoming(db: AppDB, inc: ServerChange): Promise<void> {
 export async function runSync(
   db: AppDB,
   postSync: PostSyncFn,
-): Promise<{ skipped?: 'no-token'; pushed: number; pulled: number; cursors: Record<string, number> }> {
+): Promise<{
+  skipped?: 'no-token'
+  pushed: number
+  pulled: number
+  childrenChanged: boolean
+  cursors: Record<string, number>
+}> {
   const token = await getMeta<string>(db, 'token')
   const cursors = (await getMeta<Record<string, number>>(db, 'cursors')) ?? {}
-  if (!token) return { skipped: 'no-token', pushed: 0, pulled: 0, cursors }
+  if (!token) return { skipped: 'no-token', pushed: 0, pulled: 0, childrenChanged: false, cursors }
 
   const dirty = await db.logs.where('dirty').equals(1).toArray()
   const changes = dirty.map(toPayload)
 
   const resp = await postSync(token, { cursors, changes }) // wirft AuthError bei 401
 
+  let childrenChanged = false
   await db.transaction('rw', db.logs, db.children, db.meta, async () => {
     for (const inc of resp.changes) await mergeIncoming(db, inc)
-    for (const child of resp.children) await db.children.put(child)
+    for (const child of resp.children) {
+      const existing = await db.children.get(child.id)
+      if (!existing || JSON.stringify(existing) !== JSON.stringify(child)) childrenChanged = true
+      await db.children.put(child)
+    }
     await setMeta(db, 'cursors', resp.cursors)
   })
 
-  return { pushed: changes.length, pulled: resp.changes.length, cursors: resp.cursors }
+  return { pushed: changes.length, pulled: resp.changes.length, childrenChanged, cursors: resp.cursors }
 }

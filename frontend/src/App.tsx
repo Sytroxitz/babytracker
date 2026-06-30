@@ -112,6 +112,11 @@ export default function App() {
     }
   }, [auth.token])
 
+  // Pull a partner's child master-data edits (name, birth weight, …) into the
+  // shared store so the switcher and views update live.
+  const refreshChildren = children.refresh
+  useEffect(() => syncController.onSynced(() => void refreshChildren()), [refreshChildren])
+
   useEffect(() => {
     void getMeta<boolean>(db, 'remindersEnabled').then((v) =>
       setRemindersEnabled(v === true && notificationPermission() === 'granted'),

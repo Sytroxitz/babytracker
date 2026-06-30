@@ -67,3 +67,17 @@ test('does not notify onSynced when nothing was pulled', async () => {
   await sc.requestSync()
   expect(notified).toBe(0)
 })
+
+test('notifies onSynced when only child master data changed (partner edited the child)', async () => {
+  await setMeta(db, 'token', 'jwt.x')
+  const child = {
+    id: 'c1', name: 'Rose', gender: 'female' as const, birthDate: '2026-01-01',
+    birthWeightGrams: 3200, createdAt: 'x', deletedAt: null, members: [],
+  }
+  const post: PostSyncFn = vi.fn(async () => ({ cursors: {}, changes: [], children: [child] }))
+  const sc = new SyncController(db, post)
+  let notified = 0
+  sc.onSynced(() => { notified++ })
+  await sc.requestSync()
+  expect(notified).toBe(1)
+})

@@ -64,7 +64,7 @@ export class SyncController {
     try {
       const res = await runSync(this.db, this.postSync)
       this.setNeedsRelogin(false)
-      if (res.pulled > 0) this.emitSynced()
+      if (res.pulled > 0 || res.childrenChanged) this.emitSynced()
     } catch (err) {
       if (err instanceof AuthError) this.setNeedsRelogin(true)
       // sonst: offline/Netzwerk — still schlucken, dirty bleibt für nächsten Trigger
