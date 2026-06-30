@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './auth/useAuth'
+import { useChildren } from './children/useChildren'
 import { AuthScreen } from './ui/AuthScreen'
+import { Onboarding } from './ui/Onboarding'
+import { ChildSwitcher } from './ui/ChildSwitcher'
 import { QuickEntry } from './ui/QuickEntry'
 import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
@@ -70,7 +73,9 @@ const NAV: { tab: Tab; label: string; icon: ReactNode }[] = [
 
 export default function App() {
   const auth = useAuth()
+  const children = useChildren()
   const [tab, setTab] = useState<Tab>('entry')
+  const [addingChild, setAddingChild] = useState(false)
   const [needsRelogin, setNeedsRelogin] = useState(false)
   const [remindersEnabled, setRemindersEnabled] = useState(false)
   const online = useOnline()
@@ -91,7 +96,7 @@ export default function App() {
     )
   }, [])
 
-  useReminders(remindersEnabled && !!auth.token)
+  useReminders(remindersEnabled && !!auth.token, children.activeChildId)
 
   async function toggleReminders() {
     if (remindersEnabled) {
@@ -108,6 +113,12 @@ export default function App() {
   if (!auth.ready) return null
   if (!auth.token) return <AuthScreen onSignIn={auth.signIn} onSignUp={auth.signUp} />
 
+  if (!children.ready) return null
+  if (children.children.length === 0)
+    return <Onboarding token={auth.token} onDone={() => void children.refresh()} />
+
+  const activeChild = children.activeChild!
+
   return (
     <div className="min-h-full flex flex-col">
       {/* Header */}
@@ -116,7 +127,7 @@ export default function App() {
           <span className="grid place-items-center h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-sm">
             🍼
           </span>
-          <span className="font-semibold tracking-tight">BabyTracker</span>
+          <ChildSwitcher token={auth.token} onAddChild={() => setAddingChild(true)} />
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -148,12 +159,16 @@ export default function App() {
       {/* Content */}
       <main className="flex-1 overflow-y-auto scroll-area pb-nav">
         <div key={tab} className="animate-fade-in">
-          {tab === 'entry' && <QuickEntry />}
-          {tab === 'timeline' && <Timeline />}
+          {tab === 'entry' && <QuickEntry child={activeChild} myUserId={children.myUserId} />}
+          {tab === 'timeline' && <Timeline child={activeChild} />}
           {tab === 'stats' && (
-            <StatsPage remindersEnabled={remindersEnabled} onToggleReminders={toggleReminders} />
+            <StatsPage
+              child={activeChild}
+              remindersEnabled={remindersEnabled}
+              onToggleReminders={toggleReminders}
+            />
           )}
-          {tab === 'weight' && <WeightPage />}
+          {tab === 'weight' && <WeightPage child={activeChild} myUserId={children.myUserId} />}
         </div>
       </main>
 
@@ -186,6 +201,26 @@ export default function App() {
           )
         })}
       </nav>
+
+      {/* Add / join child overlay */}
+      {addingChild && (
+        <div className="fixed inset-0 z-40 bg-neutral-950 overflow-y-auto scroll-area animate-fade-in">
+          <button
+            onClick={() => setAddingChild(false)}
+            aria-label="Schließen"
+            className="absolute top-4 right-4 z-10 h-9 w-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-neutral-100 transition"
+          >
+            ✕
+          </button>
+          <Onboarding
+            token={auth.token}
+            onDone={() => {
+              void children.refresh()
+              setAddingChild(false)
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

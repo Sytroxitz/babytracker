@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { db } from '../db/database'
 import { addLog, getLogsSince } from '../db/repository'
 import { syncController } from '../sync/syncController'
-import type { LogRecord, LogType, NewLogInput, Side, StorageLocation } from '../types'
+import type { Child, LogRecord, LogType, NewLogInput, Side, StorageLocation } from '../types'
 import { Button } from './components/Button'
 import { SideSelect } from './components/SideSelect'
 import { NumberField } from './components/NumberField'
@@ -15,7 +15,7 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function QuickEntry() {
+export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string | null }) {
   const [active, setActive] = useState<LogType | null>(null)
   const [when, setWhen] = useState(() => toLocalInput(new Date()))
   const [side, setSide] = useState<Side | null>(null)
@@ -31,8 +31,8 @@ export function QuickEntry() {
 
   const loadRecent = useCallback(async () => {
     const since = new Date(Date.now() - 3 * 86400000).toISOString()
-    setRecent(await getLogsSince(db, since))
-  }, [])
+    setRecent(await getLogsSince(db, child.id, since))
+  }, [child.id])
 
   useEffect(() => {
     void loadRecent()
@@ -66,7 +66,7 @@ export function QuickEntry() {
 
   /** Log a nursing entry immediately for the chosen side (nursing only needs the side). */
   async function logSideNursing(s: Side) {
-    await addLog(db, {
+    await addLog(db, child.id, myUserId, {
       type: 'nursing',
       occurredAt: new Date().toISOString(),
       side: s,
@@ -109,7 +109,7 @@ export function QuickEntry() {
     const label = TYPE_META[active].label
     setSaving(true)
     try {
-      await addLog(db, input)
+      await addLog(db, child.id, myUserId, input)
       void syncController.requestSync()
       showToast(`${label} gespeichert`)
       reset()

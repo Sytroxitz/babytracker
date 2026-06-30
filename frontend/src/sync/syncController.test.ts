@@ -13,7 +13,7 @@ beforeEach(async () => {
 
 test('requestSync swallows network errors (offline is expected)', async () => {
   await setMeta(db, 'token', 'jwt.x')
-  await addLog(db, { type: 'weight', occurredAt: '2026-06-01T09:00:00Z', weightGrams: 4000 })
+  await addLog(db, 'c1', null, { type: 'weight', occurredAt: '2026-06-01T09:00:00Z', weightGrams: 4000 })
   const post: PostSyncFn = vi.fn(async () => { throw new TypeError('Failed to fetch') })
   const sc = new SyncController(db, post)
   await sc.requestSync()
@@ -23,7 +23,7 @@ test('requestSync swallows network errors (offline is expected)', async () => {
 
 test('AuthError sets needsRelogin', async () => {
   await setMeta(db, 'token', 'jwt.x')
-  await addLog(db, { type: 'weight', occurredAt: '2026-06-01T09:00:00Z', weightGrams: 4000 })
+  await addLog(db, 'c1', null, { type: 'weight', occurredAt: '2026-06-01T09:00:00Z', weightGrams: 4000 })
   const post: PostSyncFn = vi.fn(async () => { throw new AuthError() })
   const sc = new SyncController(db, post)
   const seen: boolean[] = []

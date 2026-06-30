@@ -3,7 +3,19 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '../db/database'
 import { addLog } from '../db/repository'
+import type { Child } from '../types'
 import { QuickEntry } from './QuickEntry'
+
+const sampleChild: Child = {
+  id: 'c1',
+  name: 'Mia',
+  gender: 'female',
+  birthDate: '2026-01-01',
+  birthWeightGrams: null,
+  createdAt: 'x',
+  deletedAt: null,
+  members: [{ userId: 'u1', role: 'mama', email: 'a@b.c' }],
+}
 
 beforeEach(async () => {
   await db.delete()
@@ -11,7 +23,7 @@ beforeEach(async () => {
 })
 
 test('logging a bottle stores a dirty breastmilk record', async () => {
-  render(<QuickEntry />)
+  render(<QuickEntry child={sampleChild} myUserId="u1" />)
   await userEvent.click(screen.getByRole('button', { name: /flasche/i }))
   await userEvent.type(screen.getByLabelText(/menge/i), '90')
   await userEvent.click(screen.getByRole('button', { name: /speichern/i }))
@@ -22,8 +34,8 @@ test('logging a bottle stores a dirty breastmilk record', async () => {
 
 test('side recommendation: tap a side, pick Stillen → logs nursing immediately for that side', async () => {
   // Seed a left-side nursing → recommended next side is "right".
-  await addLog(db, { type: 'nursing', occurredAt: new Date().toISOString(), side: 'left' })
-  render(<QuickEntry />)
+  await addLog(db, 'c1', null, { type: 'nursing', occurredAt: new Date().toISOString(), side: 'left' })
+  render(<QuickEntry child={sampleChild} myUserId="u1" />)
 
   // The recommendation card appears once recent logs load.
   const card = within(await screen.findByRole('group', { name: 'Seiten-Empfehlung' }))

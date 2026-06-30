@@ -18,8 +18,8 @@ test('meta round-trips typed values', async () => {
 
 test('logs table indexes dirty and occurredAt', async () => {
   await db.logs.bulkPut([
-    { id: 'a', type: 'weight', occurredAt: '2026-06-01T10:00:00Z', updatedAt: '2026-06-01T10:00:00Z', deletedAt: null, serverSeq: null, dirty: 1, weightGrams: 4000 },
-    { id: 'b', type: 'weight', occurredAt: '2026-06-02T10:00:00Z', updatedAt: '2026-06-02T10:00:00Z', deletedAt: null, serverSeq: 5, dirty: 0, weightGrams: 4100 },
+    { id: 'a', childId: 'c1', createdByUserId: null, type: 'weight', occurredAt: '2026-06-01T10:00:00Z', updatedAt: '2026-06-01T10:00:00Z', deletedAt: null, serverSeq: null, dirty: 1, weightGrams: 4000 },
+    { id: 'b', childId: 'c1', createdByUserId: null, type: 'weight', occurredAt: '2026-06-02T10:00:00Z', updatedAt: '2026-06-02T10:00:00Z', deletedAt: null, serverSeq: 5, dirty: 0, weightGrams: 4100 },
   ])
   const dirty = await db.logs.where('dirty').equals(1).toArray()
   expect(dirty.map((r) => r.id)).toEqual(['a'])

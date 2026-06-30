@@ -13,18 +13,18 @@ const DEFAULT_INTERVAL = 180
  * notification once per occurrence. Also best-effort schedules a background
  * notification for the next feeding (Chromium only).
  */
-export function useReminders(enabled: boolean): void {
+export function useReminders(enabled: boolean, childId: string | null): void {
   const dueNotified = useRef<string | null>(null)
   const inactivityNotified = useRef<string | null>(null)
   const scheduled = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !childId) return
     let stopped = false
 
     async function tick() {
       const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      const logs = await getLogsSince(db, since)
+      const logs = await getLogsSince(db, childId!, since)
       const intervalMin = (await getMeta<number>(db, 'feedIntervalMin')) ?? DEFAULT_INTERVAL
       const now = new Date()
       const stats = computeFeedingStats(logs, intervalMin, now, WINDOW_DAYS)
@@ -68,5 +68,5 @@ export function useReminders(enabled: boolean): void {
       stopped = true
       window.clearInterval(id)
     }
-  }, [enabled])
+  }, [enabled, childId])
 }

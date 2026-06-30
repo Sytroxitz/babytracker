@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from 'vitest'
 import { createDb, type AppDB } from './database'
-import { addLog, updateLog, softDeleteLog, getLogsByDay, getWeightSeries, getLogsSince } from './repository'
+import { addLog, updateLog, softDeleteLog, getLogsByDay, getWeightSeries } from './repository'
 
 let db: AppDB
 beforeEach(async () => {

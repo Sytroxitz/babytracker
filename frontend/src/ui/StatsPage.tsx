@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { db, getMeta, setMeta } from '../db/database'
 import { getLogsSince } from '../db/repository'
-import type { LogRecord } from '../types'
+import type { Child, LogRecord } from '../types'
 import { computeFeedingStats, formatDuration, formatRelative } from './stats'
 import { notificationPermission, notificationsSupported } from '../notifications'
 
 interface Props {
+  child: Child
   remindersEnabled: boolean
   onToggleReminders: () => void | Promise<void>
 }
@@ -34,7 +35,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   )
 }
 
-export function StatsPage({ remindersEnabled, onToggleReminders }: Props) {
+export function StatsPage({ child, remindersEnabled, onToggleReminders }: Props) {
   const now = useNow()
   const [logs, setLogs] = useState<LogRecord[]>([])
   const [intervalMin, setIntervalMin] = useState(DEFAULT_INTERVAL)
@@ -45,10 +46,10 @@ export function StatsPage({ remindersEnabled, onToggleReminders }: Props) {
       const stored = await getMeta<number>(db, INTERVAL_KEY)
       if (typeof stored === 'number') setIntervalMin(stored)
       const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      setLogs(await getLogsSince(db, since))
+      setLogs(await getLogsSince(db, child.id, since))
       setReady(true)
     })()
-  }, [])
+  }, [child.id])
 
   async function changeInterval(next: number) {
     const clamped = Math.max(30, Math.min(480, next))

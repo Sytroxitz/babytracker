@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { register, login, postSync, createChild, ApiError, AuthError } from './client'
+import { register, login, postSync, ApiError, AuthError } from './client'
 
 function mockFetch(status: number, json: unknown) {
   return vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>

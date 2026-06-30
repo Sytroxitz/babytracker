@@ -13,6 +13,8 @@ describe('reconcileAccount', () => {
     // Put one log row directly and set cursor – no prior accountId
     await db.logs.put({
       id: 'x',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',
@@ -34,6 +36,8 @@ describe('reconcileAccount', () => {
     await setMeta(db, 'accountId', 'a@b.de')
     await db.logs.put({
       id: 'y',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',
@@ -55,6 +59,8 @@ describe('reconcileAccount', () => {
     await db.logs.bulkPut([
       {
         id: 'p',
+        childId: 'c1',
+        createdByUserId: null,
         type: 'weight',
         occurredAt: '2026-06-01T10:00:00Z',
         updatedAt: '2026-06-01T10:00:00Z',
@@ -65,6 +71,8 @@ describe('reconcileAccount', () => {
       },
       {
         id: 'q',
+        childId: 'c1',
+        createdByUserId: null,
         type: 'weight',
         occurredAt: '2026-06-02T10:00:00Z',
         updatedAt: '2026-06-02T10:00:00Z',
@@ -87,6 +95,8 @@ describe('reconcileAccount', () => {
     await reconcileAccount(db, 'User@Example.com')
     await db.logs.put({
       id: 'x',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',

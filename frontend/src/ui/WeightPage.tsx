@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { db } from '../db/database'
 import { addLog, getWeightSeries, softDeleteLog } from '../db/repository'
 import { syncController } from '../sync/syncController'
-import type { LogRecord } from '../types'
+import type { Child, LogRecord } from '../types'
 import { Button } from './components/Button'
 import { NumberField } from './components/NumberField'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -13,7 +13,7 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function WeightPage() {
+export function WeightPage({ child, myUserId }: { child: Child; myUserId: string | null }) {
   const [series, setSeries] = useState<LogRecord[]>([])
   const [adding, setAdding] = useState(false)
   const [grams, setGrams] = useState<number | null>(null)
@@ -25,8 +25,8 @@ export function WeightPage() {
   const toastTimer = useRef<number | null>(null)
 
   const load = useCallback(async () => {
-    setSeries(await getWeightSeries(db))
-  }, [])
+    setSeries(await getWeightSeries(db, child.id))
+  }, [child.id])
 
   useEffect(() => {
     void load()
@@ -56,7 +56,7 @@ export function WeightPage() {
     if (grams == null) return
     setSaving(true)
     try {
-      await addLog(db, {
+      await addLog(db, child.id, myUserId, {
         type: 'weight',
         occurredAt: new Date(when).toISOString(),
         weightGrams: grams,
