@@ -26,6 +26,7 @@ export function QuickEntry() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [recent, setRecent] = useState<LogRecord[]>([])
+  const [sidePick, setSidePick] = useState<Side | null>(null)
   const toastTimer = useRef<number | null>(null)
 
   const loadRecent = useCallback(async () => {
@@ -52,6 +53,15 @@ export function QuickEntry() {
     setDuration(null)
     setStorage(null)
     setNote('')
+    setSidePick(null)
+  }
+
+  /** Start a nursing/pumping entry for a chosen side (from the recommendation card). */
+  function startSideEntry(s: Side, type: 'nursing' | 'pumping') {
+    reset()
+    setWhen(toLocalInput(new Date()))
+    setSide(s)
+    setActive(type)
   }
 
   function showToast(msg: string) {
@@ -105,46 +115,6 @@ export function QuickEntry() {
 
     return (
       <div className="p-4 max-w-md mx-auto">
-        {/* Recommended next side (nursing/pumping) — at a glance */}
-        {side.lastSide && (
-          <div className="card p-4 mb-4 animate-fade-in">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-neutral-300">Nächste Seite</span>
-              <span className="text-xs text-neutral-500 truncate">
-                zuletzt {sideLabel(side.lastSide)} · {side.lastType === 'pumping' ? 'Pumpen' : 'Stillen'} · vor{' '}
-                {formatDuration(agoMin)}
-              </span>
-            </div>
-            {side.recommended ? (
-              <>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  {(['left', 'right'] as const).map((sd) => {
-                    const isRec = side.recommended === sd
-                    const isLast = side.lastSide === sd
-                    return (
-                      <div
-                        key={sd}
-                        className={`relative min-h-14 rounded-xl grid place-items-center text-lg font-semibold border transition ${
-                          isRec
-                            ? 'bg-indigo-600/90 text-white border-indigo-400/40 shadow-lg shadow-indigo-950/30'
-                            : 'bg-white/5 text-neutral-400 border-white/10'
-                        }`}
-                      >
-                        {sd === 'left' ? 'Links' : 'Rechts'}
-                        {isRec && <span className="absolute top-1.5 right-2 text-[10px] uppercase tracking-wide">empfohlen</span>}
-                        {isLast && <span className="absolute bottom-1 right-2 text-[10px] text-neutral-300/70">zuletzt</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="text-[11px] text-neutral-500 mt-2">Nur eine Empfehlung – du kannst frei wählen.</p>
-              </>
-            ) : (
-              <p className="text-sm text-neutral-400 mt-2">Zuletzt beide Seiten – freie Wahl.</p>
-            )}
-          </div>
-        )}
-
         <h2 className="text-lg font-semibold text-neutral-200 mb-1">Was möchtest du eintragen?</h2>
         <p className="text-sm text-neutral-500 mb-4">Tippe auf eine Kategorie.</p>
         <div className="grid grid-cols-2 gap-3 stagger">
@@ -168,6 +138,85 @@ export function QuickEntry() {
             )
           })}
         </div>
+
+        {/* Recommended next side — tap a side, then pick Stillen/Pumpen to log directly */}
+        {side.lastSide && (
+          <div className="card p-4 mt-4 animate-fade-in" role="group" aria-label="Seiten-Empfehlung">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-neutral-300">Nächste Seite</span>
+              <span className="text-xs text-neutral-500 truncate">
+                zuletzt {sideLabel(side.lastSide)} · {side.lastType === 'pumping' ? 'Pumpen' : 'Stillen'} · vor{' '}
+                {formatDuration(agoMin)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              {(['left', 'right'] as const).map((sd) => {
+                const isRec = side.recommended === sd
+                const isLast = side.lastSide === sd
+                const isPicked = sidePick === sd
+                return (
+                  <button
+                    key={sd}
+                    type="button"
+                    onClick={() => setSidePick(isPicked ? null : sd)}
+                    aria-label={sd === 'left' ? 'Links' : 'Rechts'}
+                    className={`relative min-h-14 rounded-xl grid place-items-center text-lg font-semibold border transition active:scale-[0.97] ${
+                      isPicked
+                        ? 'bg-indigo-600 text-white border-indigo-300/50 ring-2 ring-indigo-400/40'
+                        : isRec
+                          ? 'bg-indigo-600/80 text-white border-indigo-400/40 shadow-lg shadow-indigo-950/30'
+                          : 'bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    {sd === 'left' ? 'Links' : 'Rechts'}
+                    {isRec && !isPicked && (
+                      <span className="absolute top-1.5 right-2 text-[10px] uppercase tracking-wide">empfohlen</span>
+                    )}
+                    {isLast && <span className="absolute bottom-1 right-2 text-[10px] text-neutral-200/70">zuletzt</span>}
+                  </button>
+                )
+              })}
+            </div>
+
+            {sidePick ? (
+              <div className="mt-3 animate-fade-in">
+                <div className="text-sm text-neutral-300 mb-2">
+                  {sideLabel(sidePick)} eintragen als:
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startSideEntry(sidePick, 'nursing')}
+                    className="min-h-12 rounded-xl bg-gradient-to-br from-rose-500/25 to-rose-500/5 border border-rose-400/20 font-semibold transition active:scale-[0.97]"
+                  >
+                    🤱 Stillen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startSideEntry(sidePick, 'pumping')}
+                    className="min-h-12 rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-500/5 border border-sky-400/20 font-semibold transition active:scale-[0.97]"
+                  >
+                    💧 Pumpen
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSidePick(null)}
+                  className="text-xs text-neutral-500 mt-2 hover:text-neutral-300"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-neutral-500 mt-2">
+                {side.recommended
+                  ? `Empfehlung: ${sideLabel(side.recommended)}. Tippe eine Seite zum direkten Eintragen – frei wählbar.`
+                  : 'Tippe eine Seite zum direkten Eintragen.'}
+              </p>
+            )}
+          </div>
+        )}
 
         {toast && (
           <div
