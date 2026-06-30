@@ -65,7 +65,7 @@ input, button, select, textarea { font: inherit; }
   width: 100%;
   min-height: 3rem;
   border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.04);
+  background-color: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 0 1rem;
   font-size: 1.05rem;
@@ -76,8 +76,27 @@ input, button, select, textarea { font: inherit; }
 .field::placeholder { color: rgb(115 115 125); }
 .field:focus {
   border-color: rgb(129 140 248);
-  background: rgba(255, 255, 255, 0.06);
+  background-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
+}
+
+/* <select> needs an explicit reset: with a custom background the native dark
+   option list is lost (white-on-white), and the native arrow misaligns it. */
+select.field {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a3a3a3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
+}
+/* solid, readable dropdown items (overrides the translucent field bg) */
+select.field option,
+select.field optgroup {
+  background-color: #16161c;
+  color: rgb(245 245 245);
 }
 
 /* nicer scrollbar on desktop */
