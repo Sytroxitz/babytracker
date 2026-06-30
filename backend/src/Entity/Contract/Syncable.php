@@ -2,7 +2,6 @@
 declare(strict_types=1);
 namespace App\Entity\Contract;
 
-use App\Entity\User;
 use Symfony\Component\Uid\Uuid;
 
 interface Syncable
@@ -10,8 +9,10 @@ interface Syncable
     public static function type(): string;
 
     public function getId(): Uuid;
-    public function getUser(): User;
-    public function setUser(User $user): void;
+    public function getChild(): \App\Entity\Child;
+    public function setChild(\App\Entity\Child $child): void;
+    public function getCreatedBy(): ?\App\Entity\User;
+    public function setCreatedBy(?\App\Entity\User $user): void;
     public function getOccurredAt(): \DateTimeImmutable;
     public function setOccurredAt(\DateTimeImmutable $t): void;
     public function getUpdatedAt(): \DateTimeImmutable;

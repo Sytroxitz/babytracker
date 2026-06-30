@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'bottle_log')]
-#[ORM\UniqueConstraint(name: 'uniq_bottle_log_user_seq', columns: ['user_id', 'server_seq'])]
+#[ORM\UniqueConstraint(name: 'uniq_bottle_log_child_seq', columns: ['child_id', 'server_seq'])]
 class BottleLog implements Syncable
 {
     use SyncableTrait;
