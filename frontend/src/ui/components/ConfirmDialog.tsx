@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from './Button'
 
 interface Props {
@@ -10,7 +11,8 @@ interface Props {
   onCancel: () => void
 }
 
-/** Lightweight modal confirmation (bottom-sheet on mobile, centered card on desktop). */
+/** Centered modal confirmation, rendered in a portal so it always anchors to the
+ *  viewport (never clipped/offset by a transformed ancestor). */
 export function ConfirmDialog({
   title,
   description,
@@ -27,12 +29,12 @@ export function ConfirmDialog({
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-50 grid place-items-end sm:place-items-center animate-fade-in"
+      className="fixed inset-0 z-50 grid place-items-center p-5 animate-fade-in"
     >
       <button
         aria-hidden="true"
@@ -40,7 +42,7 @@ export function ConfirmDialog({
         onClick={onCancel}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
       />
-      <div className="relative w-full sm:max-w-sm bg-neutral-900/95 border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 pb-safe shadow-2xl animate-fade-in-up">
+      <div className="relative w-full max-w-sm bg-neutral-900/95 border border-white/10 rounded-3xl p-5 shadow-2xl animate-pop">
         <h3 className="text-lg font-semibold">{title}</h3>
         {description && <p className="text-sm text-neutral-400 mt-1.5">{description}</p>}
         <div className="grid grid-cols-2 gap-3 mt-5">
@@ -56,6 +58,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
