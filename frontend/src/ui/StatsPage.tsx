@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { db, getMeta, setMeta } from '../db/database'
 import { getLogsSince } from '../db/repository'
+import { syncController } from '../sync/syncController'
 import type { Child, LogRecord } from '../types'
 import { computeFeedingStats, formatDuration, formatRelative } from './stats'
 import { notificationPermission, notificationsSupported } from '../notifications'
@@ -61,15 +62,22 @@ export function StatsPage({
   const [intervalMin, setIntervalMin] = useState(DEFAULT_INTERVAL)
   const [ready, setReady] = useState(false)
 
+  const reloadLogs = useCallback(async () => {
+    const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
+    setLogs(await getLogsSince(db, child.id, since))
+  }, [child.id])
+
   useEffect(() => {
     void (async () => {
       const stored = await getMeta<number>(db, INTERVAL_KEY)
       if (typeof stored === 'number') setIntervalMin(stored)
-      const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      setLogs(await getLogsSince(db, child.id, since))
+      await reloadLogs()
       setReady(true)
     })()
-  }, [child.id])
+  }, [reloadLogs])
+
+  // Reload when a sync pulls changes (e.g. a partner added an entry).
+  useEffect(() => syncController.onSynced(() => void reloadLogs()), [reloadLogs])
 
   async function changeInterval(next: number) {
     const clamped = Math.max(30, Math.min(480, next))

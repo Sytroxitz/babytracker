@@ -71,6 +71,9 @@ export function Timeline({ child }: { child: Child }) {
     void load()
   }, [load])
 
+  // Reload when a sync pulls changes (e.g. a partner added an entry).
+  useEffect(() => syncController.onSynced(() => void load()), [load])
+
   async function confirmRemove() {
     if (!pending) return
     const id = pending.id

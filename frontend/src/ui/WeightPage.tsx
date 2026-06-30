@@ -32,6 +32,9 @@ export function WeightPage({ child, myUserId }: { child: Child; myUserId: string
     void load()
   }, [load])
 
+  // Reload when a sync pulls changes (e.g. a partner added a weight).
+  useEffect(() => syncController.onSynced(() => void load()), [load])
+
   useEffect(
     () => () => {
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
