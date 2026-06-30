@@ -42,9 +42,28 @@ class SyncService
             }
         }
 
-        $this->em->wrapInTransaction(function () use ($user, $changes, $childrenById) {
-            foreach ($childrenById as $child) {
+        // Build the set of children that actually have incoming changes (membership-filtered).
+        // Sort by childId string for deterministic lock order across all callers (prevents deadlocks).
+        // Pure-pull syncs ($changes empty) acquire no write locks at all.
+        /** @var array<string, Child> $childrenToLock */
+        $childrenToLock = [];
+        foreach ($changes as $change) {
+            $childId = (string) ($change['childId'] ?? '');
+            if (isset($childrenById[$childId]) && !isset($childrenToLock[$childId])) {
+                $childrenToLock[$childId] = $childrenById[$childId];
+            }
+        }
+        ksort($childrenToLock); // deterministic order; prevents deadlocks when two callers share 2+ children
+
+        $this->em->wrapInTransaction(function () use ($user, $changes, $childrenById, $childrenToLock) {
+            // Lock only children with incoming changes, in deterministic sorted order.
+            // Refresh after locking so the syncCounter is the freshly-committed DB value;
+            // without refresh, a concurrent caller that acquired the lock just before us
+            // could have bumped the counter, causing a stale-counter collision on the
+            // (child_id, server_seq) unique index and losing one caller's changes (HTTP 500).
+            foreach ($childrenToLock as $child) {
                 $this->em->lock($child, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                $this->em->refresh($child);
             }
             foreach ($changes as $change) {
                 $childId = (string) ($change['childId'] ?? '');
