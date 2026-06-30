@@ -5,42 +5,41 @@ import { isAfter } from '../time'
 
 export type PostSyncFn = (
   token: string,
-  body: { since: number; changes: unknown[] },
+  body: { cursors: Record<string, number>; changes: unknown[] },
 ) => Promise<SyncResponse>
 
-/** Wandelt ein lokales Record in die ans Backend gesendete Change-Form (ohne lokale Flags). */
 function toPayload(rec: LogRecord): Record<string, unknown> {
-  const { dirty: _dirty, ...rest } = rec
-  return rest
+  const { dirty: _dirty, createdByUserId, ...rest } = rec
+  return { ...rest, createdById: createdByUserId }
 }
 
-/** Übernimmt ein Server-Change in die DB (Incoming gewinnt, außer lokal-dirty-und-neuer). */
 async function mergeIncoming(db: AppDB, inc: ServerChange): Promise<void> {
   const local = await db.logs.get(inc.id)
   if (local && local.dirty === 1 && isAfter(local.updatedAt, inc.updatedAt)) {
-    return // lokale, noch nicht gepushte Änderung ist neuer → behalten
+    return
   }
-  const { userId: _userId, ...fields } = inc
-  await db.logs.put({ ...(fields as Omit<ServerChange, 'userId'>), dirty: 0 })
+  const { createdById, ...fields } = inc
+  await db.logs.put({ ...(fields as Omit<ServerChange, 'createdById'>), createdByUserId: createdById, dirty: 0 })
 }
 
 export async function runSync(
   db: AppDB,
   postSync: PostSyncFn,
-): Promise<{ skipped?: 'no-token'; pushed: number; pulled: number; cursor: number }> {
+): Promise<{ skipped?: 'no-token'; pushed: number; pulled: number; cursors: Record<string, number> }> {
   const token = await getMeta<string>(db, 'token')
-  const since = (await getMeta<number>(db, 'cursor')) ?? 0
-  if (!token) return { skipped: 'no-token', pushed: 0, pulled: 0, cursor: since }
+  const cursors = (await getMeta<Record<string, number>>(db, 'cursors')) ?? {}
+  if (!token) return { skipped: 'no-token', pushed: 0, pulled: 0, cursors }
 
   const dirty = await db.logs.where('dirty').equals(1).toArray()
   const changes = dirty.map(toPayload)
 
-  const resp = await postSync(token, { since, changes }) // wirft AuthError bei 401
+  const resp = await postSync(token, { cursors, changes }) // wirft AuthError bei 401
 
-  await db.transaction('rw', db.logs, db.meta, async () => {
+  await db.transaction('rw', db.logs, db.children, db.meta, async () => {
     for (const inc of resp.changes) await mergeIncoming(db, inc)
-    await setMeta(db, 'cursor', resp.cursor)
+    for (const child of resp.children) await db.children.put(child)
+    await setMeta(db, 'cursors', resp.cursors)
   })
 
-  return { pushed: changes.length, pulled: resp.changes.length, cursor: resp.cursor }
+  return { pushed: changes.length, pulled: resp.changes.length, cursors: resp.cursors }
 }

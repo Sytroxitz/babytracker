@@ -35,7 +35,7 @@ test('AuthError sets needsRelogin', async () => {
 
 test('successful sync clears needsRelogin', async () => {
   await setMeta(db, 'token', 'jwt.x')
-  const post: PostSyncFn = vi.fn(async () => ({ cursor: 0, changes: [] }))
+  const post: PostSyncFn = vi.fn(async () => ({ cursors: {}, changes: [], children: [] }))
   const sc = new SyncController(db, post)
   ;(sc as unknown as { needsRelogin: boolean }).needsRelogin = true
   await sc.requestSync()
