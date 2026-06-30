@@ -27,7 +27,7 @@ class Child
     #[ORM\Column(nullable: true)]
     private ?int $birthWeightGrams = null;
 
-    #[ORM\Column(type: 'bigint', options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $syncCounter = 0;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
