@@ -103,4 +103,19 @@ describe('reconcileAccount', () => {
     expect(await getMeta<number>(db, 'cursor')).toBe(5)
     expect(await getMeta<string>(db, 'accountId')).toBe('user@example.com')
   })
+
+  test('switching account clears children + cursors + activeChildId', async () => {
+    const db2 = createDb('test-acct-' + crypto.randomUUID())
+    await setMeta(db2, 'accountId', 'old@b.c')
+    await db2.children.put({ id: 'c1', name: 'Mia', gender: 'female', birthDate: '2026-01-01', birthWeightGrams: null, createdAt: 'x', deletedAt: null, members: [] })
+    await setMeta(db2, 'cursors', { c1: 5 })
+    await setMeta(db2, 'activeChildId', 'c1')
+
+    await reconcileAccount(db2, 'new@b.c')
+
+    expect(await db2.children.count()).toBe(0)
+    expect(await getMeta(db2, 'cursors')).toEqual({})
+    expect(await getMeta(db2, 'activeChildId')).toBeUndefined()
+    await db2.delete()
+  })
 })

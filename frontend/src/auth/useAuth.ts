@@ -26,12 +26,14 @@ export function useAuth() {
     token,
     ready,
     async signIn(email: string, password: string) {
-      const { token: t } = await apiLogin(email, password)
+      const { token: t, userId } = await apiLogin(email, password)
+      await setMeta(db, 'myUserId', userId)
       await persist(t, email)
     },
     async signUp(email: string, password: string) {
       await apiRegister(email, password)
-      const { token: t } = await apiLogin(email, password)
+      const { token: t, userId } = await apiLogin(email, password)
+      await setMeta(db, 'myUserId', userId)
       await persist(t, email)
     },
     async signOut() {
