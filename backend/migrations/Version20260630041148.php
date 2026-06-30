@@ -14,7 +14,7 @@ final class Version20260630041148 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Child-scoped schema: child / child_membership / invitation; log tables child_id + created_by_id';
     }
 
     public function up(Schema $schema): void
@@ -75,11 +75,14 @@ final class Version20260630041148 extends AbstractMigration
         $this->addSql('ALTER TABLE invitation DROP FOREIGN KEY FK_F11D61A2DD62C21B');
         $this->addSql('ALTER TABLE invitation DROP FOREIGN KEY FK_F11D61A2B03A8386');
         $this->addSql('ALTER TABLE invitation DROP FOREIGN KEY FK_F11D61A24C2B72A8');
+        $this->addSql('ALTER TABLE bottle_log DROP FOREIGN KEY FK_488B0023DD62C21B');
+        $this->addSql('ALTER TABLE nursing_log DROP FOREIGN KEY FK_611D5D4CDD62C21B');
+        $this->addSql('ALTER TABLE pumping_log DROP FOREIGN KEY FK_606B38C2DD62C21B');
+        $this->addSql('ALTER TABLE weight_log DROP FOREIGN KEY FK_6BBB9E9CDD62C21B');
         $this->addSql('DROP TABLE child');
         $this->addSql('DROP TABLE child_membership');
         $this->addSql('DROP TABLE invitation');
         $this->addSql('ALTER TABLE app_user ADD sync_counter BIGINT DEFAULT 0 NOT NULL');
-        $this->addSql('ALTER TABLE bottle_log DROP FOREIGN KEY FK_488B0023DD62C21B');
         $this->addSql('ALTER TABLE bottle_log DROP FOREIGN KEY FK_488B0023B03A8386');
         $this->addSql('DROP INDEX IDX_488B0023DD62C21B ON bottle_log');
         $this->addSql('DROP INDEX IDX_488B0023B03A8386 ON bottle_log');
@@ -88,7 +91,6 @@ final class Version20260630041148 extends AbstractMigration
         $this->addSql('ALTER TABLE bottle_log ADD CONSTRAINT `FK_488B0023A76ED395` FOREIGN KEY (user_id) REFERENCES app_user (id) ON UPDATE NO ACTION ON DELETE NO ACTION');
         $this->addSql('CREATE UNIQUE INDEX uniq_bottle_log_user_seq ON bottle_log (user_id, server_seq)');
         $this->addSql('CREATE INDEX IDX_488B0023A76ED395 ON bottle_log (user_id)');
-        $this->addSql('ALTER TABLE nursing_log DROP FOREIGN KEY FK_611D5D4CDD62C21B');
         $this->addSql('ALTER TABLE nursing_log DROP FOREIGN KEY FK_611D5D4CB03A8386');
         $this->addSql('DROP INDEX IDX_611D5D4CDD62C21B ON nursing_log');
         $this->addSql('DROP INDEX IDX_611D5D4CB03A8386 ON nursing_log');
@@ -97,7 +99,6 @@ final class Version20260630041148 extends AbstractMigration
         $this->addSql('ALTER TABLE nursing_log ADD CONSTRAINT `FK_611D5D4CA76ED395` FOREIGN KEY (user_id) REFERENCES app_user (id) ON UPDATE NO ACTION ON DELETE NO ACTION');
         $this->addSql('CREATE INDEX IDX_611D5D4CA76ED395 ON nursing_log (user_id)');
         $this->addSql('CREATE UNIQUE INDEX uniq_nursing_log_user_seq ON nursing_log (user_id, server_seq)');
-        $this->addSql('ALTER TABLE pumping_log DROP FOREIGN KEY FK_606B38C2DD62C21B');
         $this->addSql('ALTER TABLE pumping_log DROP FOREIGN KEY FK_606B38C2B03A8386');
         $this->addSql('DROP INDEX IDX_606B38C2DD62C21B ON pumping_log');
         $this->addSql('DROP INDEX IDX_606B38C2B03A8386 ON pumping_log');
@@ -106,7 +107,6 @@ final class Version20260630041148 extends AbstractMigration
         $this->addSql('ALTER TABLE pumping_log ADD CONSTRAINT `FK_606B38C2A76ED395` FOREIGN KEY (user_id) REFERENCES app_user (id) ON UPDATE NO ACTION ON DELETE NO ACTION');
         $this->addSql('CREATE UNIQUE INDEX uniq_pumping_log_user_seq ON pumping_log (user_id, server_seq)');
         $this->addSql('CREATE INDEX IDX_606B38C2A76ED395 ON pumping_log (user_id)');
-        $this->addSql('ALTER TABLE weight_log DROP FOREIGN KEY FK_6BBB9E9CDD62C21B');
         $this->addSql('ALTER TABLE weight_log DROP FOREIGN KEY FK_6BBB9E9CB03A8386');
         $this->addSql('DROP INDEX IDX_6BBB9E9CDD62C21B ON weight_log');
         $this->addSql('DROP INDEX IDX_6BBB9E9CB03A8386 ON weight_log');
