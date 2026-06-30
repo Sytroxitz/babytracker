@@ -9,7 +9,10 @@ export async function reconcileAccount(db: AppDB, email: string): Promise<void> 
   const prev = await getMeta<string>(db, 'accountId')
   if (prev && prev !== normalized) {
     await db.logs.clear()
+    await db.children.clear()
     await setMeta(db, 'cursor', 0)
+    await setMeta(db, 'cursors', {})
+    await db.meta.delete('activeChildId')
   }
   await setMeta(db, 'accountId', normalized)
 }

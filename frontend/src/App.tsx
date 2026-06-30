@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './auth/useAuth'
+import { useChildren } from './children/useChildren'
 import { AuthScreen } from './ui/AuthScreen'
+import { Onboarding } from './ui/Onboarding'
+import { ChildSwitcher } from './ui/ChildSwitcher'
 import { QuickEntry } from './ui/QuickEntry'
 import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
 import { StatsPage } from './ui/StatsPage'
+import { UpdateBanner } from './ui/UpdateBanner'
 import { syncController } from './sync/syncController'
 import { db, getMeta, setMeta } from './db/database'
 import { useReminders } from './sync/useReminders'
 import { notificationPermission, requestNotificationPermission } from './notifications'
+import { registerPwa, checkLatestVersion, hardReset, type PwaControls } from './pwa/updates'
+import { APP_VERSION, APP_BUILD } from './version'
 
 type Tab = 'entry' | 'timeline' | 'stats' | 'weight'
 
@@ -70,10 +76,31 @@ const NAV: { tab: Tab; label: string; icon: ReactNode }[] = [
 
 export default function App() {
   const auth = useAuth()
+  const children = useChildren()
   const [tab, setTab] = useState<Tab>('entry')
+  const [addingChild, setAddingChild] = useState(false)
   const [needsRelogin, setNeedsRelogin] = useState(false)
   const [remindersEnabled, setRemindersEnabled] = useState(false)
+  const [updateReady, setUpdateReady] = useState(false)
+  const [latestBuild, setLatestBuild] = useState<number | null>(null)
+  const pwa = useRef<PwaControls | null>(null)
   const online = useOnline()
+
+  // Register the service worker once and wire the update banner.
+  useEffect(() => {
+    pwa.current = registerPwa(() => setUpdateReady(true))
+    void checkLatestVersion(APP_BUILD).then(setLatestBuild)
+  }, [])
+
+  async function checkForUpdates() {
+    await pwa.current?.update()
+    setLatestBuild(await checkLatestVersion(APP_BUILD))
+  }
+
+  function applyUpdate() {
+    if (pwa.current) pwa.current.applyUpdate()
+    else void hardReset()
+  }
 
   useEffect(() => {
     if (!auth.token) return
@@ -85,13 +112,18 @@ export default function App() {
     }
   }, [auth.token])
 
+  // Pull a partner's child master-data edits (name, birth weight, …) into the
+  // shared store so the switcher and views update live.
+  const refreshChildren = children.refresh
+  useEffect(() => syncController.onSynced(() => void refreshChildren()), [refreshChildren])
+
   useEffect(() => {
     void getMeta<boolean>(db, 'remindersEnabled').then((v) =>
       setRemindersEnabled(v === true && notificationPermission() === 'granted'),
     )
   }, [])
 
-  useReminders(remindersEnabled && !!auth.token)
+  useReminders(remindersEnabled && !!auth.token, children.activeChildId)
 
   async function toggleReminders() {
     if (remindersEnabled) {
@@ -108,6 +140,18 @@ export default function App() {
   if (!auth.ready) return null
   if (!auth.token) return <AuthScreen onSignIn={auth.signIn} onSignUp={auth.signUp} />
 
+  if (!children.ready) return null
+  if (children.children.length === 0)
+    return (
+      <Onboarding
+        token={auth.token}
+        onDone={() => void children.refresh()}
+        onSignOut={auth.signOut}
+      />
+    )
+
+  const activeChild = children.activeChild!
+
   return (
     <div className="min-h-full flex flex-col">
       {/* Header */}
@@ -116,7 +160,7 @@ export default function App() {
           <span className="grid place-items-center h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-sm">
             🍼
           </span>
-          <span className="font-semibold tracking-tight">BabyTracker</span>
+          <ChildSwitcher token={auth.token} onAddChild={() => setAddingChild(true)} />
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -135,6 +179,14 @@ export default function App() {
         </div>
       </header>
 
+      {/* Update-available banner */}
+      {(updateReady || latestBuild !== null) && (
+        <UpdateBanner
+          onUpdate={applyUpdate}
+          latest={latestBuild !== null ? `Build ${latestBuild}` : null}
+        />
+      )}
+
       {/* Session-expired banner */}
       {needsRelogin && (
         <button
@@ -148,12 +200,19 @@ export default function App() {
       {/* Content */}
       <main className="flex-1 overflow-y-auto scroll-area pb-nav">
         <div key={tab} className="animate-fade-in">
-          {tab === 'entry' && <QuickEntry />}
-          {tab === 'timeline' && <Timeline />}
+          {tab === 'entry' && <QuickEntry child={activeChild} myUserId={children.myUserId} />}
+          {tab === 'timeline' && <Timeline child={activeChild} />}
           {tab === 'stats' && (
-            <StatsPage remindersEnabled={remindersEnabled} onToggleReminders={toggleReminders} />
+            <StatsPage
+              child={activeChild}
+              remindersEnabled={remindersEnabled}
+              onToggleReminders={toggleReminders}
+              appVersion={APP_VERSION}
+              onCheckUpdates={checkForUpdates}
+              onHardReset={() => void hardReset()}
+            />
           )}
-          {tab === 'weight' && <WeightPage />}
+          {tab === 'weight' && <WeightPage child={activeChild} myUserId={children.myUserId} />}
         </div>
       </main>
 
@@ -186,6 +245,27 @@ export default function App() {
           )
         })}
       </nav>
+
+      {/* Add / join child overlay */}
+      {addingChild && (
+        <div className="fixed inset-0 z-40 bg-neutral-950 overflow-y-auto scroll-area animate-fade-in">
+          <button
+            onClick={() => setAddingChild(false)}
+            aria-label="Schließen"
+            className="absolute top-4 right-4 z-10 h-9 w-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-neutral-100 transition"
+          >
+            ✕
+          </button>
+          <Onboarding
+            token={auth.token}
+            onDone={() => {
+              void children.refresh()
+              setAddingChild(false)
+            }}
+            onSignOut={auth.signOut}
+          />
+        </div>
+      )}
     </div>
   )
 }

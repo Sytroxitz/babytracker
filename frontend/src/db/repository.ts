@@ -2,10 +2,12 @@ import type { AppDB } from './database'
 import type { LogRecord, NewLogInput } from '../types'
 import { nowIso } from '../time'
 
-export async function addLog(db: AppDB, input: NewLogInput): Promise<LogRecord> {
+export async function addLog(db: AppDB, childId: string, createdByUserId: string | null, input: NewLogInput): Promise<LogRecord> {
   const now = nowIso()
   const base = {
     id: crypto.randomUUID(),
+    childId,
+    createdByUserId,
     occurredAt: input.occurredAt,
     updatedAt: now,
     deletedAt: null as string | null,
@@ -41,25 +43,28 @@ export async function softDeleteLog(db: AppDB, id: string): Promise<void> {
   await db.logs.update(id, { deletedAt: now, updatedAt: now, dirty: 1 })
 }
 
-export async function getLogsByDay(db: AppDB, dayStartIso: string, dayEndIso: string): Promise<LogRecord[]> {
+export async function getLogsByDay(db: AppDB, childId: string, dayStartIso: string, dayEndIso: string): Promise<LogRecord[]> {
   const start = Date.parse(dayStartIso)
   const end = Date.parse(dayEndIso)
   const rows = await db.logs
-    .filter((r) => r.deletedAt === null && Date.parse(r.occurredAt) >= start && Date.parse(r.occurredAt) < end)
+    .filter((r) => r.childId === childId && r.deletedAt === null && Date.parse(r.occurredAt) >= start && Date.parse(r.occurredAt) < end)
     .toArray()
   return rows.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
 }
 
-export async function getWeightSeries(db: AppDB): Promise<LogRecord[]> {
-  const rows = await db.logs.where('type').equals('weight').filter((r) => r.deletedAt === null).toArray()
+export async function getWeightSeries(db: AppDB, childId: string): Promise<LogRecord[]> {
+  const rows = await db.logs
+    .where('type').equals('weight')
+    .filter((r) => r.childId === childId && r.deletedAt === null)
+    .toArray()
   return rows.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
 }
 
 /** Non-deleted logs with occurredAt >= sinceIso, ascending by occurredAt (for statistics). */
-export async function getLogsSince(db: AppDB, sinceIso: string): Promise<LogRecord[]> {
+export async function getLogsSince(db: AppDB, childId: string, sinceIso: string): Promise<LogRecord[]> {
   const since = Date.parse(sinceIso)
   const rows = await db.logs
-    .filter((r) => r.deletedAt === null && Date.parse(r.occurredAt) >= since)
+    .filter((r) => r.childId === childId && r.deletedAt === null && Date.parse(r.occurredAt) >= since)
     .toArray()
   return rows.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
 }

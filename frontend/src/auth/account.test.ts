@@ -13,6 +13,8 @@ describe('reconcileAccount', () => {
     // Put one log row directly and set cursor – no prior accountId
     await db.logs.put({
       id: 'x',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',
@@ -34,6 +36,8 @@ describe('reconcileAccount', () => {
     await setMeta(db, 'accountId', 'a@b.de')
     await db.logs.put({
       id: 'y',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',
@@ -55,6 +59,8 @@ describe('reconcileAccount', () => {
     await db.logs.bulkPut([
       {
         id: 'p',
+        childId: 'c1',
+        createdByUserId: null,
         type: 'weight',
         occurredAt: '2026-06-01T10:00:00Z',
         updatedAt: '2026-06-01T10:00:00Z',
@@ -65,6 +71,8 @@ describe('reconcileAccount', () => {
       },
       {
         id: 'q',
+        childId: 'c1',
+        createdByUserId: null,
         type: 'weight',
         occurredAt: '2026-06-02T10:00:00Z',
         updatedAt: '2026-06-02T10:00:00Z',
@@ -87,6 +95,8 @@ describe('reconcileAccount', () => {
     await reconcileAccount(db, 'User@Example.com')
     await db.logs.put({
       id: 'x',
+      childId: 'c1',
+      createdByUserId: null,
       type: 'weight',
       occurredAt: '2026-06-01T10:00:00Z',
       updatedAt: '2026-06-01T10:00:00Z',
@@ -102,5 +112,20 @@ describe('reconcileAccount', () => {
     expect(await db.logs.count()).toBe(1)
     expect(await getMeta<number>(db, 'cursor')).toBe(5)
     expect(await getMeta<string>(db, 'accountId')).toBe('user@example.com')
+  })
+
+  test('switching account clears children + cursors + activeChildId', async () => {
+    const db2 = createDb('test-acct-' + crypto.randomUUID())
+    await setMeta(db2, 'accountId', 'old@b.c')
+    await db2.children.put({ id: 'c1', name: 'Mia', gender: 'female', birthDate: '2026-01-01', birthWeightGrams: null, createdAt: 'x', deletedAt: null, members: [] })
+    await setMeta(db2, 'cursors', { c1: 5 })
+    await setMeta(db2, 'activeChildId', 'c1')
+
+    await reconcileAccount(db2, 'new@b.c')
+
+    expect(await db2.children.count()).toBe(0)
+    expect(await getMeta(db2, 'cursors')).toEqual({})
+    expect(await getMeta(db2, 'activeChildId')).toBeUndefined()
+    await db2.delete()
   })
 })

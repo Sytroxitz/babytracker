@@ -7,13 +7,16 @@ const W = 320,
   H = 200,
   PAD = 28
 
-/** SVG weight curve. Loads its own series when no `series` prop is given. */
-export function WeightChart({ series: seriesProp }: { series?: LogRecord[] } = {}) {
+/** SVG weight curve. Loads its own series (scoped to `childId`) when no `series` prop is given. */
+export function WeightChart({
+  series: seriesProp,
+  childId,
+}: { series?: LogRecord[]; childId?: string } = {}) {
   const [loaded, setLoaded] = useState<LogRecord[]>([])
   useEffect(() => {
-    if (seriesProp !== undefined) return
-    void getWeightSeries(db).then(setLoaded)
-  }, [seriesProp])
+    if (seriesProp !== undefined || !childId) return
+    void getWeightSeries(db, childId).then(setLoaded)
+  }, [seriesProp, childId])
   const series = seriesProp ?? loaded
 
   if (series.length === 0) {

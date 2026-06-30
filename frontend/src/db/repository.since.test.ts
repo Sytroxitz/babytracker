@@ -9,19 +9,19 @@ beforeEach(async () => {
 })
 
 test('getLogsSince returns non-deleted logs from the cutoff, ascending', async () => {
-  await addLog(db, { type: 'bottle', occurredAt: '2026-06-01T08:00:00Z', amountMl: 90 })
-  await addLog(db, { type: 'nursing', occurredAt: '2026-06-10T08:00:00Z', side: 'left' })
-  const recent = await addLog(db, { type: 'bottle', occurredAt: '2026-06-12T08:00:00Z', amountMl: 100 })
+  await addLog(db, 'c1', null, { type: 'bottle', occurredAt: '2026-06-01T08:00:00Z', amountMl: 90 })
+  await addLog(db, 'c1', null, { type: 'nursing', occurredAt: '2026-06-10T08:00:00Z', side: 'left' })
+  const recent = await addLog(db, 'c1', null, { type: 'bottle', occurredAt: '2026-06-12T08:00:00Z', amountMl: 100 })
   await softDeleteLog(db, recent.id)
 
-  const rows = await getLogsSince(db, '2026-06-05T00:00:00Z')
+  const rows = await getLogsSince(db, 'c1', '2026-06-05T00:00:00Z')
   // 06-01 is before cutoff; the 06-12 bottle is soft-deleted → only the nursing remains
   expect(rows.map((r) => r.type)).toEqual(['nursing'])
 })
 
 test('getLogsSince sorts ascending by occurredAt', async () => {
-  await addLog(db, { type: 'bottle', occurredAt: '2026-06-10T20:00:00Z', amountMl: 100 })
-  await addLog(db, { type: 'bottle', occurredAt: '2026-06-10T08:00:00Z', amountMl: 90 })
-  const rows = await getLogsSince(db, '2026-06-01T00:00:00Z')
+  await addLog(db, 'c1', null, { type: 'bottle', occurredAt: '2026-06-10T20:00:00Z', amountMl: 100 })
+  await addLog(db, 'c1', null, { type: 'bottle', occurredAt: '2026-06-10T08:00:00Z', amountMl: 90 })
+  const rows = await getLogsSince(db, 'c1', '2026-06-01T00:00:00Z')
   expect(rows.map((r) => r.amountMl)).toEqual([90, 100])
 })

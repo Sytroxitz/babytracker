@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace App\Entity\Concerns;
 
+use App\Entity\Child;
 use App\Entity\User;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -12,9 +13,13 @@ trait SyncableTrait
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
 
+    #[ORM\ManyToOne(targetEntity: Child::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Child $child;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private User $user;
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $createdBy = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $occurredAt;
@@ -30,8 +35,10 @@ trait SyncableTrait
 
     public function getId(): Uuid { return $this->id; }
     public function setId(Uuid $id): void { $this->id = $id; }
-    public function getUser(): User { return $this->user; }
-    public function setUser(User $user): void { $this->user = $user; }
+    public function getChild(): Child { return $this->child; }
+    public function setChild(Child $child): void { $this->child = $child; }
+    public function getCreatedBy(): ?User { return $this->createdBy; }
+    public function setCreatedBy(?User $user): void { $this->createdBy = $user; }
     public function getOccurredAt(): \DateTimeImmutable { return $this->occurredAt; }
     public function setOccurredAt(\DateTimeImmutable $t): void { $this->occurredAt = $t; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
@@ -45,7 +52,8 @@ trait SyncableTrait
     {
         return [
             'id' => (string) $this->id,
-            'userId' => (string) $this->user->getId(),
+            'childId' => (string) $this->child->getId(),
+            'createdById' => $this->createdBy !== null ? (string) $this->createdBy->getId() : null,
             'occurredAt' => $this->occurredAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
             'deletedAt' => $this->deletedAt?->format(DATE_ATOM),

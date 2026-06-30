@@ -17,14 +17,12 @@ class SyncController
         /** @var User $user */
         $user = $security->getUser();
         $payload = json_decode($request->getContent(), true) ?? [];
-        $since = (int) ($payload['since'] ?? 0);
+        $cursors = $payload['cursors'] ?? [];
+        if (!is_array($cursors)) { $cursors = []; }
         $changes = $payload['changes'] ?? [];
-        if (!is_array($changes)) {
-            $changes = [];
-        }
+        if (!is_array($changes)) { $changes = []; }
 
-        $result = $syncService->sync($user, $since, $changes);
-
+        $result = $syncService->sync($user, $cursors, $changes);
         return new JsonResponse($result);
     }
 }

@@ -1,4 +1,4 @@
-import type { SyncResponse } from '../types'
+import type { SyncResponse, Child, Role, Gender } from '../types'
 
 const BASE = '/api'
 
@@ -37,6 +37,7 @@ async function request<T>(
     } catch { /* keep default */ }
     throw new ApiError(res.status, msg)
   }
+  if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }
 
@@ -45,9 +46,40 @@ export function register(email: string, password: string) {
 }
 
 export function login(email: string, password: string) {
-  return request<{ token: string }>('/login', { method: 'POST', body: { email, password } })
+  return request<{ token: string; userId: string }>('/login', { method: 'POST', body: { email, password } })
 }
 
-export function postSync(token: string, body: { since: number; changes: unknown[] }) {
+export function postSync(token: string, body: { cursors: Record<string, number>; changes: unknown[] }) {
   return request<SyncResponse>('/sync', { method: 'POST', body, token })
+}
+
+export function createChild(
+  token: string,
+  input: { name: string; gender: Gender; birthDate: string; birthWeightGrams: number | null; role: Role },
+) {
+  return request<{ child: Child }>('/children', { method: 'POST', body: input, token })
+}
+
+export function patchChild(
+  token: string,
+  id: string,
+  patch: { name?: string; gender?: Gender; birthDate?: string; birthWeightGrams?: number | null },
+) {
+  return request<{ child: Child }>(`/children/${id}`, { method: 'PATCH', body: patch, token })
+}
+
+export function deleteChild(token: string, id: string) {
+  return request<void>(`/children/${id}`, { method: 'DELETE', token })
+}
+
+export function createInvitation(token: string, childId: string) {
+  return request<{ code: string; expiresAt: string }>(`/children/${childId}/invitations`, { method: 'POST', token })
+}
+
+export function acceptInvitation(token: string, code: string, role: Role) {
+  return request<{ child: Child }>(`/invitations/${code}/accept`, { method: 'POST', body: { role }, token })
+}
+
+export function leaveChild(token: string, childId: string) {
+  return request<void>(`/children/${childId}/members/me`, { method: 'DELETE', token })
 }

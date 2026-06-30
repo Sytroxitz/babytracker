@@ -1,7 +1,21 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, expect, test } from 'vitest'
 import App from './App'
+import { db, setMeta } from './db/database'
 
-test('renders the app title', async () => {
+beforeEach(async () => {
+  await db.delete()
+  await db.open()
+})
+
+test('renders the auth title when signed out', async () => {
   render(<App />)
   expect(await screen.findByText('BabyTracker')).toBeInTheDocument()
+})
+
+test('shows onboarding when authed but no children', async () => {
+  await setMeta(db, 'token', 'eyJhbG.eyJzdWI.sig123') // well-formed JWT shape
+  await db.children.clear()
+  render(<App />)
+  await waitFor(() => expect(screen.getByText(/Willkommen/)).toBeInTheDocument())
 })

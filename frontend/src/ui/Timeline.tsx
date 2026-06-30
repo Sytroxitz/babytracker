@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { db } from '../db/database'
 import { getLogsByDay, softDeleteLog } from '../db/repository'
 import { syncController } from '../sync/syncController'
-import type { LogRecord, LogType } from '../types'
+import type { Child, LogRecord, LogType } from '../types'
+import { roleOf } from '../children/useChildren'
 import { TYPE_META } from './logMeta'
 import { ConfirmDialog } from './components/ConfirmDialog'
 
@@ -50,7 +51,7 @@ function summarize(rows: LogRecord[]): { type: LogType; text: string }[] {
     .filter((x): x is { type: LogType; text: string } => x !== null)
 }
 
-export function Timeline() {
+export function Timeline({ child }: { child: Child }) {
   const [day, setDay] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -61,14 +62,17 @@ export function Timeline() {
 
   const load = useCallback(async () => {
     const [s, e] = dayBounds(day)
-    const all = await getLogsByDay(db, s, e)
+    const all = await getLogsByDay(db, child.id, s, e)
     // Gewicht erscheint auf der Gewichtsseite – hier nur Fütter-Einträge.
     setRows(all.filter((r) => r.type !== 'weight'))
-  }, [day])
+  }, [day, child.id])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Reload when a sync pulls changes (e.g. a partner added an entry).
+  useEffect(() => syncController.onSynced(() => void load()), [load])
 
   async function confirmRemove() {
     if (!pending) return
@@ -142,6 +146,8 @@ export function Timeline() {
       <div className="flex flex-col gap-2.5 stagger">
         {rows.map((r) => {
           const meta = TYPE_META[r.type]
+          const role = roleOf(child, r.createdByUserId ?? null)
+          const roleLabel = role === 'mama' ? 'Mama' : role === 'papa' ? 'Papa' : null
           return (
             <div key={r.id} className="flex items-center gap-3 rounded-2xl card px-3.5 py-3">
               <span className={`grid place-items-center h-11 w-11 rounded-xl text-xl shrink-0 ${meta.chip}`}>
@@ -155,6 +161,9 @@ export function Timeline() {
                   {r.note ? ` · ${r.note}` : ''}
                 </div>
               </div>
+              {roleLabel && (
+                <span className="text-xs text-neutral-500 shrink-0">{roleLabel}</span>
+              )}
               <button
                 onClick={() => setPending(r)}
                 aria-label="Löschen"
