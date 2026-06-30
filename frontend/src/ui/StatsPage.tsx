@@ -9,6 +9,9 @@ interface Props {
   child: Child
   remindersEnabled: boolean
   onToggleReminders: () => void | Promise<void>
+  appVersion: string
+  onCheckUpdates: () => void | Promise<void>
+  onHardReset: () => void
 }
 
 const INTERVAL_KEY = 'feedIntervalMin'
@@ -35,8 +38,25 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   )
 }
 
-export function StatsPage({ child, remindersEnabled, onToggleReminders }: Props) {
+export function StatsPage({
+  child,
+  remindersEnabled,
+  onToggleReminders,
+  appVersion,
+  onCheckUpdates,
+  onHardReset,
+}: Props) {
   const now = useNow()
+  const [checking, setChecking] = useState(false)
+
+  async function handleCheck() {
+    setChecking(true)
+    try {
+      await onCheckUpdates()
+    } finally {
+      setChecking(false)
+    }
+  }
   const [logs, setLogs] = useState<LogRecord[]>([])
   const [intervalMin, setIntervalMin] = useState(DEFAULT_INTERVAL)
   const [ready, setReady] = useState(false)
@@ -188,6 +208,29 @@ export function StatsPage({ child, remindersEnabled, onToggleReminders }: Props)
         <StatCard label="Mahlzeiten / Tag" value={String(s.feedsPerDay)} hint={`Ø ${WINDOW_DAYS} Tage`} />
         <StatCard label="Ø Flasche" value={s.avgBottleMl != null ? `${s.avgBottleMl} ml` : '–'} />
         <StatCard label="Flasche heute" value={`${s.bottleMlToday} ml`} />
+      </div>
+
+      {/* App & updates */}
+      <div className="card p-4">
+        <div className="text-sm font-medium text-neutral-300">App</div>
+        <div className="text-xs text-neutral-500 mt-0.5">{appVersion}</div>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <button
+            type="button"
+            onClick={() => void handleCheck()}
+            disabled={checking}
+            className="min-h-11 rounded-xl bg-white/5 text-neutral-200 hover:bg-white/10 text-sm font-medium transition active:scale-[0.97] disabled:opacity-50"
+          >
+            {checking ? 'Suche …' : 'Nach Updates suchen'}
+          </button>
+          <button
+            type="button"
+            onClick={onHardReset}
+            className="min-h-11 rounded-xl bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-neutral-200 text-sm font-medium transition active:scale-[0.97]"
+          >
+            Hart neu laden
+          </button>
+        </div>
       </div>
 
       <p className="text-xs text-neutral-500 text-center">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './auth/useAuth'
 import { useChildren } from './children/useChildren'
@@ -9,10 +9,13 @@ import { QuickEntry } from './ui/QuickEntry'
 import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
 import { StatsPage } from './ui/StatsPage'
+import { UpdateBanner } from './ui/UpdateBanner'
 import { syncController } from './sync/syncController'
 import { db, getMeta, setMeta } from './db/database'
 import { useReminders } from './sync/useReminders'
 import { notificationPermission, requestNotificationPermission } from './notifications'
+import { registerPwa, checkLatestVersion, hardReset, type PwaControls } from './pwa/updates'
+import { APP_VERSION, APP_BUILD } from './version'
 
 type Tab = 'entry' | 'timeline' | 'stats' | 'weight'
 
@@ -78,7 +81,26 @@ export default function App() {
   const [addingChild, setAddingChild] = useState(false)
   const [needsRelogin, setNeedsRelogin] = useState(false)
   const [remindersEnabled, setRemindersEnabled] = useState(false)
+  const [updateReady, setUpdateReady] = useState(false)
+  const [latestBuild, setLatestBuild] = useState<number | null>(null)
+  const pwa = useRef<PwaControls | null>(null)
   const online = useOnline()
+
+  // Register the service worker once and wire the update banner.
+  useEffect(() => {
+    pwa.current = registerPwa(() => setUpdateReady(true))
+    void checkLatestVersion(APP_BUILD).then(setLatestBuild)
+  }, [])
+
+  async function checkForUpdates() {
+    await pwa.current?.update()
+    setLatestBuild(await checkLatestVersion(APP_BUILD))
+  }
+
+  function applyUpdate() {
+    if (pwa.current) pwa.current.applyUpdate()
+    else void hardReset()
+  }
 
   useEffect(() => {
     if (!auth.token) return
@@ -146,6 +168,14 @@ export default function App() {
         </div>
       </header>
 
+      {/* Update-available banner */}
+      {(updateReady || latestBuild !== null) && (
+        <UpdateBanner
+          onUpdate={applyUpdate}
+          latest={latestBuild !== null ? `Build ${latestBuild}` : null}
+        />
+      )}
+
       {/* Session-expired banner */}
       {needsRelogin && (
         <button
@@ -166,6 +196,9 @@ export default function App() {
               child={activeChild}
               remindersEnabled={remindersEnabled}
               onToggleReminders={toggleReminders}
+              appVersion={APP_VERSION}
+              onCheckUpdates={checkForUpdates}
+              onHardReset={() => void hardReset()}
             />
           )}
           {tab === 'weight' && <WeightPage child={activeChild} myUserId={children.myUserId} />}

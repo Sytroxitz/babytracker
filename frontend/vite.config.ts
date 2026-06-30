@@ -39,11 +39,14 @@ export default defineConfig({
     tailwindcss(),
     emitVersionJson,
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       workbox: {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
       manifest: {
         name: 'BabyTracker',
