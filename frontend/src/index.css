@@ -88,6 +88,9 @@ input, button, select, textarea { font: inherit; }
 /* safe-area helpers for installed/mobile */
 .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
 .h-nav { height: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
+/* bottom padding that exactly clears the fixed bottom nav (so each page's own
+   p-4 becomes a clean, consistent gap flush above the navbar) */
+.pb-nav { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

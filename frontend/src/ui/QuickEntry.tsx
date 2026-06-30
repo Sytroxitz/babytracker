@@ -56,12 +56,27 @@ export function QuickEntry() {
     setSidePick(null)
   }
 
-  /** Start a nursing/pumping entry for a chosen side (from the recommendation card). */
+  /** Start a pumping entry for a chosen side (needs an amount → opens the form). */
   function startSideEntry(s: Side, type: 'nursing' | 'pumping') {
     reset()
     setWhen(toLocalInput(new Date()))
     setSide(s)
     setActive(type)
+  }
+
+  /** Log a nursing entry immediately for the chosen side (nursing only needs the side). */
+  async function logSideNursing(s: Side) {
+    await addLog(db, {
+      type: 'nursing',
+      occurredAt: new Date().toISOString(),
+      side: s,
+      durationMinutes: null,
+      note: null,
+    })
+    void syncController.requestSync()
+    showToast(`Stillen ${s === 'left' ? 'links' : s === 'right' ? 'rechts' : ''} gespeichert`)
+    setSidePick(null)
+    void loadRecent()
   }
 
   function showToast(msg: string) {
@@ -139,9 +154,17 @@ export function QuickEntry() {
           })}
         </div>
 
-        {/* Recommended next side — tap a side, then pick Stillen/Pumpen to log directly */}
+        {/* Recommended next side — fixed directly above the bottom nav, independent of content */}
         {side.lastSide && (
-          <div className="card p-4 mt-4 animate-fade-in" role="group" aria-label="Seiten-Empfehlung">
+          <div
+            className="fixed inset-x-0 z-10 px-4"
+            style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+          >
+            <div
+              className="max-w-md mx-auto card p-4 animate-fade-in shadow-2xl shadow-black/50"
+              role="group"
+              aria-label="Seiten-Empfehlung"
+            >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-neutral-300">Nächste Seite</span>
               <span className="text-xs text-neutral-500 truncate">
@@ -187,7 +210,7 @@ export function QuickEntry() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => startSideEntry(sidePick, 'nursing')}
+                    onClick={() => void logSideNursing(sidePick)}
                     className="min-h-12 rounded-xl bg-gradient-to-br from-rose-500/25 to-rose-500/5 border border-rose-400/20 font-semibold transition active:scale-[0.97]"
                   >
                     🤱 Stillen
@@ -200,6 +223,9 @@ export function QuickEntry() {
                     💧 Pumpen
                   </button>
                 </div>
+                <p className="text-[11px] text-neutral-500 mt-2">
+                  Stillen wird sofort gespeichert · Pumpen fragt noch die Menge ab.
+                </p>
                 <button
                   type="button"
                   onClick={() => setSidePick(null)}
@@ -215,6 +241,7 @@ export function QuickEntry() {
                   : 'Tippe eine Seite zum direkten Eintragen.'}
               </p>
             )}
+            </div>
           </div>
         )}
 

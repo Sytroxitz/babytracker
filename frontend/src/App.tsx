@@ -146,8 +146,8 @@ export default function App() {
       )}
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto scroll-area pb-28">
-        <div key={tab} className="animate-fade-in-up">
+      <main className="flex-1 overflow-y-auto scroll-area pb-nav">
+        <div key={tab} className="animate-fade-in">
           {tab === 'entry' && <QuickEntry />}
           {tab === 'timeline' && <Timeline />}
           {tab === 'stats' && (
