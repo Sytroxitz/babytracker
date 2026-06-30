@@ -64,7 +64,7 @@ kind-zentrierten, teilbaren Tracker umbauen:
   verwechselbaren Zeichen)
 - `createdBy` (ManyToOne User)
 - `createdAt`
-- `expiresAt` (datetime_immutable, nullable) — z.B. 14 Tage
+- `expiresAt` (datetime_immutable, nullable) — **24 Stunden** ab Erstellung
 - `usedAt` (datetime_immutable, nullable), `usedBy` (ManyToOne User, nullable)
 - **Einmal-Code**: nach Beitritt verbraucht; ein neuer Code ist generierbar.
 
@@ -130,8 +130,8 @@ Client speichert `userId` in Meta (`myUserId`) für die lokale Urheber-Zuordnung
 - `POST /api/invitations/{code}/accept` — Body: `role`. Fügt aktuellen User als
   Mitglied hinzu (Validierung: Code existiert, nicht abgelaufen, nicht
   verbraucht, User noch nicht Mitglied). Antwort: Kind inkl. Mitglieder.
-- `DELETE /api/children/{id}/members/me` — Kind verlassen (optional; entfernt
-  eigene Membership). Lokale Daten des Kindes werden clientseitig entfernt.
+- `DELETE /api/children/{id}/members/me` — Kind verlassen (entfernt eigene
+  Membership). Lokale Daten des Kindes werden clientseitig entfernt.
 - Reines **Lesen** der Kinder/Mitglieder läuft sonst über die Sync-Response;
   ein separates `GET /api/children` ist optional (z.B. für initialen Load vor
   dem ersten Sync) und kann dieselbe `children`-Struktur liefern.
@@ -180,7 +180,7 @@ Erst nach erfolgreichem Anlegen/Beitreten erscheint die Haupt-App.
 - **„Partner einladen"** → `POST .../invitations` → Code anzeigen (Kopieren/
   Teilen, neu erzeugen).
 - **Kind löschen** (`DELETE`).
-- Optional **„Kind verlassen"**.
+- **„Kind verlassen"** (`DELETE .../members/me`).
 
 ### Views filtern nach aktivem Kind
 - `repository.ts`-Queries bekommen einen `childId`-Parameter; QuickEntry,
