@@ -4,7 +4,7 @@ import { useAuth } from './auth/useAuth'
 import { AuthScreen } from './ui/AuthScreen'
 import { QuickEntry } from './ui/QuickEntry'
 import { Timeline } from './ui/Timeline'
-import { WeightChart } from './ui/WeightChart'
+import { WeightPage } from './ui/WeightPage'
 import { syncController } from './sync/syncController'
 
 type Tab = 'entry' | 'timeline' | 'weight'
@@ -116,7 +116,7 @@ export default function App() {
         <div key={tab} className="animate-fade-in-up">
           {tab === 'entry' && <QuickEntry />}
           {tab === 'timeline' && <Timeline />}
-          {tab === 'weight' && <WeightChart />}
+          {tab === 'weight' && <WeightPage />}
         </div>
       </main>
 

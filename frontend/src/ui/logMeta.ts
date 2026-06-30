@@ -32,3 +32,6 @@ export const TYPE_META: Record<
 }
 
 export const TYPE_ORDER: LogType[] = ['nursing', 'pumping', 'bottle', 'weight']
+
+/** Types entered from the "Erfassen" quick-entry screen (weight lives on its own page). */
+export const ENTRY_TYPES: LogType[] = ['nursing', 'pumping', 'bottle']

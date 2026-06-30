@@ -6,7 +6,7 @@ import type { LogType, NewLogInput, Side, StorageLocation } from '../types'
 import { Button } from './components/Button'
 import { SideSelect } from './components/SideSelect'
 import { NumberField } from './components/NumberField'
-import { TYPE_META, TYPE_ORDER } from './logMeta'
+import { TYPE_META, ENTRY_TYPES } from './logMeta'
 
 /** Lokale datetime-local-Eingabe (YYYY-MM-DDTHH:mm) ↔ ISO. */
 function toLocalInput(d: Date): string {
@@ -20,7 +20,6 @@ export function QuickEntry() {
   const [side, setSide] = useState<Side | null>(null)
   const [amountMl, setAmountMl] = useState<number | null>(null)
   const [durationMinutes, setDuration] = useState<number | null>(null)
-  const [weightGrams, setWeight] = useState<number | null>(null)
   const [storageLocation, setStorage] = useState<StorageLocation | null>(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -40,7 +39,6 @@ export function QuickEntry() {
     setSide(null)
     setAmountMl(null)
     setDuration(null)
-    setWeight(null)
     setStorage(null)
     setNote('')
   }
@@ -69,10 +67,6 @@ export function QuickEntry() {
         if (amountMl == null) return
         input = { type: 'bottle', occurredAt, amountMl, note: n }
         break
-      case 'weight':
-        if (weightGrams == null) return
-        input = { type: 'weight', occurredAt, weightGrams, note: n }
-        break
       default:
         return
     }
@@ -95,7 +89,7 @@ export function QuickEntry() {
         <h2 className="text-lg font-semibold text-neutral-200 mb-1">Was möchtest du eintragen?</h2>
         <p className="text-sm text-neutral-500 mb-4">Tippe auf eine Kategorie.</p>
         <div className="grid grid-cols-2 gap-3 stagger">
-          {TYPE_ORDER.map((t) => {
+          {ENTRY_TYPES.map((t) => {
             const meta = TYPE_META[t]
             return (
               <button
@@ -202,7 +196,6 @@ export function QuickEntry() {
         </>
       )}
       {active === 'bottle' && <NumberField label="Menge" suffix="ml" value={amountMl} onChange={setAmountMl} />}
-      {active === 'weight' && <NumberField label="Gewicht" suffix="g" value={weightGrams} onChange={setWeight} />}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-neutral-300">Notiz (optional)</span>
