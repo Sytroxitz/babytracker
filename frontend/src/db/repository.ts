@@ -54,3 +54,12 @@ export async function getWeightSeries(db: AppDB): Promise<LogRecord[]> {
   const rows = await db.logs.where('type').equals('weight').filter((r) => r.deletedAt === null).toArray()
   return rows.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
 }
+
+/** Non-deleted logs with occurredAt >= sinceIso, ascending by occurredAt (for statistics). */
+export async function getLogsSince(db: AppDB, sinceIso: string): Promise<LogRecord[]> {
+  const since = Date.parse(sinceIso)
+  const rows = await db.logs
+    .filter((r) => r.deletedAt === null && Date.parse(r.occurredAt) >= since)
+    .toArray()
+  return rows.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
+}

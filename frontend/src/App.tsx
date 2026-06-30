@@ -5,9 +5,10 @@ import { AuthScreen } from './ui/AuthScreen'
 import { QuickEntry } from './ui/QuickEntry'
 import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
+import { StatsPage } from './ui/StatsPage'
 import { syncController } from './sync/syncController'
 
-type Tab = 'entry' | 'timeline' | 'weight'
+type Tab = 'entry' | 'timeline' | 'stats' | 'weight'
 
 function useOnline(): boolean {
   const [online, setOnline] = useState(() =>
@@ -43,6 +44,15 @@ const NAV: { tab: Tab; label: string; icon: ReactNode }[] = [
         <circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none" />
         <circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none" />
         <circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none" />
+      </>
+    ),
+  },
+  {
+    tab: 'stats',
+    label: 'Statistik',
+    icon: (
+      <>
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </>
     ),
   },
@@ -116,12 +126,13 @@ export default function App() {
         <div key={tab} className="animate-fade-in-up">
           {tab === 'entry' && <QuickEntry />}
           {tab === 'timeline' && <Timeline />}
+          {tab === 'stats' && <StatsPage />}
           {tab === 'weight' && <WeightPage />}
         </div>
       </main>
 
       {/* Bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 z-20 h-nav pb-safe grid grid-cols-3 bg-neutral-950/80 backdrop-blur-md border-t border-white/8">
+      <nav className="fixed bottom-0 inset-x-0 z-20 h-nav pb-safe grid grid-cols-4 bg-neutral-950/80 backdrop-blur-md border-t border-white/8">
         {NAV.map(({ tab: t, label, icon }) => {
           const activeTab = tab === t
           return (
