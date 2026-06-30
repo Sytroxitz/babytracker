@@ -1,17 +1,19 @@
 import Dexie, { type Table } from 'dexie'
-import type { LogRecord } from '../types'
+import type { LogRecord, Child } from '../types'
 
 interface MetaRow { key: string; value: unknown }
 
 export class AppDB extends Dexie {
   logs!: Table<LogRecord, string>
+  children!: Table<Child, string>
   meta!: Table<MetaRow, string>
 
   constructor(name: string) {
     super(name)
     // dirty als 0/1 (Booleans sind in IndexedDB nicht indexierbar).
-    this.version(1).stores({
-      logs: 'id, type, occurredAt, dirty',
+    this.version(2).stores({
+      logs: 'id, type, occurredAt, dirty, childId, [childId+occurredAt]',
+      children: 'id',
       meta: '&key',
     })
   }

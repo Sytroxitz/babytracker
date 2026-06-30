@@ -1,10 +1,26 @@
 export type LogType = 'nursing' | 'pumping' | 'bottle' | 'weight'
 export type Side = 'left' | 'right' | 'both'
 export type StorageLocation = 'fridge' | 'freezer'
+export type Gender = 'male' | 'female' | 'diverse'
+export type Role = 'mama' | 'papa'
+
+export interface ChildMember { userId: string; role: Role; email: string }
+export interface Child {
+  id: string
+  name: string
+  gender: Gender
+  birthDate: string            // YYYY-MM-DD
+  birthWeightGrams: number | null
+  createdAt: string
+  deletedAt: string | null
+  members: ChildMember[]
+}
 
 /** Flaches, in Dexie gespeichertes Record. Typ-spezifische Felder sind optional. */
 export interface LogRecord {
   id: string
+  childId: string
+  createdByUserId: string | null
   type: LogType
   occurredAt: string          // ISO-8601
   updatedAt: string           // ISO-8601 (Konfliktauflösung)
@@ -24,11 +40,12 @@ export interface LogRecord {
 }
 
 /** Vom Server geliefertes Change-Objekt (wie LogRecord, aber ohne lokale Flags). */
-export type ServerChange = Omit<LogRecord, 'dirty'> & { userId: string }
+export type ServerChange = Omit<LogRecord, 'dirty'> & { createdById: string | null }
 
 export interface SyncResponse {
-  cursor: number
+  cursors: Record<string, number>
   changes: ServerChange[]
+  children: Child[]
 }
 
 /** Eingaben aus den Schnell-Erfassen-Formularen (typ-diskriminiert). */
