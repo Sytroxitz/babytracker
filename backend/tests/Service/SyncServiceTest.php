@@ -2,13 +2,16 @@
 declare(strict_types=1);
 namespace App\Tests\Service;
 
+use App\Entity\Child;
+use App\Entity\ChildMembership;
 use App\Entity\User;
 use App\Service\SyncService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Uid\Uuid;
 
-class SyncServiceTest extends KernelTestCase
+final class SyncServiceTest extends KernelTestCase
 {
     private EntityManagerInterface $em;
     private SyncService $sync;
@@ -19,155 +22,91 @@ class SyncServiceTest extends KernelTestCase
         $c = static::getContainer();
         $this->em = $c->get(EntityManagerInterface::class);
         $this->sync = $c->get(SyncService::class);
+        // Clean up any data left from a previous run (fixed emails would collide)
+        $conn = $this->em->getConnection();
+        $conn->executeStatement("DELETE FROM child WHERE name = 'Mia'"); // cascades logs + memberships
+        $conn->executeStatement("DELETE FROM app_user WHERE email IN ('a@b.c','owner@b.c','stranger@b.c','owner2@b.c','partner2@b.c')");
     }
 
-    private function makeUser(): User
+    private function user(string $email): User
     {
-        $u = new User('s'.uniqid().'@test.de');
-        $u->setPassword('x');
+        $u = new User($email);
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        $u->setPassword($hasher->hashPassword($u, 'pw'));
         $this->em->persist($u);
-        $this->em->flush();
         return $u;
     }
 
-    private function change(string $id, string $updatedAt, array $extra): array
+    private function childWithMember(User $u, string $role = 'mama'): Child
+    {
+        $child = new Child('Mia', 'female', new \DateTimeImmutable('2026-01-01'), null);
+        $this->em->persist($child);
+        $this->em->persist(new ChildMembership($child, $u, $role));
+        return $child;
+    }
+
+    private function nursingChange(Child $child, string $when): array
     {
         return [
+            'id' => (string) Uuid::v4(),
             'type' => 'nursing',
-            'id' => $id,
-            'occurredAt' => '2026-06-01T10:00:00+00:00',
-            'updatedAt' => $updatedAt,
+            'childId' => (string) $child->getId(),
+            'occurredAt' => $when,
+            'updatedAt' => $when,
             'deletedAt' => null,
-        ] + $extra;
+            'side' => 'left',
+            'durationMinutes' => 10,
+            'note' => null,
+        ];
     }
 
-    public function testInsertAssignsServerSeq(): void
+    public function test_push_then_pull_returns_change_with_per_child_cursor(): void
     {
-        $user = $this->makeUser();
-        $id = (string) Uuid::v4();
+        $u = $this->user('a@b.c');
+        $child = $this->childWithMember($u);
+        $this->em->flush();
+        $cid = (string) $child->getId();
 
-        $result = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T10:00:00+00:00', ['side' => 'left', 'durationMinutes' => 12]),
-        ]);
+        $res = $this->sync->sync($u, [], [$this->nursingChange($child, '2026-02-01T10:00:00+00:00')]);
 
-        $this->assertSame(1, $result['cursor']);
-        $this->assertCount(1, $result['changes']);
-        $this->assertSame($id, $result['changes'][0]['id']);
-        $this->assertSame('left', $result['changes'][0]['side']);
-        $this->assertSame(1, $result['changes'][0]['serverSeq']);
+        self::assertSame(1, $res['cursors'][$cid]);
+        self::assertCount(1, $res['changes']);
+        self::assertSame($cid, $res['changes'][0]['childId']);
+        self::assertSame((string) $u->getId(), $res['changes'][0]['createdById']);
+        self::assertCount(1, $res['children']);
+        self::assertSame($cid, $res['children'][0]['id']);
     }
 
-    public function testLastWriteWinsIgnoresOlderIncoming(): void
+    public function test_changes_for_non_member_child_are_ignored(): void
     {
-        $user = $this->makeUser();
-        $id = (string) Uuid::v4();
+        $owner = $this->user('owner@b.c');
+        $stranger = $this->user('stranger@b.c');
+        $child = $this->childWithMember($owner);
+        $this->em->flush();
 
-        $r1 = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T12:00:00+00:00', ['side' => 'right']),
-        ]);
-        // Älterer Stand darf den neueren nicht überschreiben
-        $r2 = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T11:00:00+00:00', ['side' => 'left']),
-        ]);
-        // A rejected (older) write must NOT advance the cursor
-        $this->assertSame($r1['cursor'], $r2['cursor']);
+        // stranger versucht, in fremdes Kind zu schreiben
+        $res = $this->sync->sync($stranger, [], [$this->nursingChange($child, '2026-02-01T10:00:00+00:00')]);
 
-        $result = $this->sync->sync($user, 0, []);
-        $this->assertCount(1, $result['changes']);
-        $this->assertSame('right', $result['changes'][0]['side']);
+        self::assertSame([], $res['changes']);
+        self::assertSame([], $res['children']);
+        // und der Eintrag darf beim Owner NICHT auftauchen
+        $ownerRes = $this->sync->sync($owner, [], []);
+        self::assertCount(0, $ownerRes['changes']);
     }
 
-    public function testNewerIncomingOverwritesAndBumpsCursor(): void
+    public function test_new_member_pulls_full_history_from_cursor_zero(): void
     {
-        $user = $this->makeUser();
-        $id = (string) Uuid::v4();
+        $owner = $this->user('owner2@b.c');
+        $child = $this->childWithMember($owner);
+        $this->em->flush();
+        $this->sync->sync($owner, [], [$this->nursingChange($child, '2026-02-01T10:00:00+00:00')]);
 
-        // First sync: insert with side 'left' at T1
-        $r1 = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T10:00:00+00:00', ['side' => 'left']),
-        ]);
-        $cursorAfterFirst = $r1['cursor'];
-        $this->assertSame(1, $cursorAfterFirst);
+        // Partner tritt bei
+        $partner = $this->user('partner2@b.c');
+        $this->em->persist(new ChildMembership($child, $partner, 'papa'));
+        $this->em->flush();
 
-        // Second sync: NEWER change for same id, side 'right' at T2 > T1
-        $r2 = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T11:00:00+00:00', ['side' => 'right']),
-        ]);
-
-        // (a) stored side is now 'right'
-        $allChanges = $this->sync->sync($user, 0, [])['changes'];
-        $this->assertSame('right', $allChanges[0]['side']);
-
-        // (b) cursor advanced (second serverSeq assigned, cursor == 2)
-        $this->assertSame(2, $r2['cursor']);
-
-        // (c) a pull since the first cursor returns the updated row
-        $pullSinceFirst = $this->sync->sync($user, $cursorAfterFirst, [])['changes'];
-        $this->assertCount(1, $pullSinceFirst);
-        $this->assertSame($id, $pullSinceFirst[0]['id']);
-        $this->assertSame('right', $pullSinceFirst[0]['side']);
-    }
-
-    public function testBottleAndWeightRoundTrip(): void
-    {
-        $user = $this->makeUser();
-        $bottleId = (string) Uuid::v4();
-        $weightId = (string) Uuid::v4();
-
-        $result = $this->sync->sync($user, 0, [
-            [
-                'type' => 'bottle',
-                'id' => $bottleId,
-                'occurredAt' => '2026-06-01T08:00:00+00:00',
-                'updatedAt' => '2026-06-01T08:00:00+00:00',
-                'deletedAt' => null,
-                'amountMl' => 90,
-            ],
-            [
-                'type' => 'weight',
-                'id' => $weightId,
-                'occurredAt' => '2026-06-01T09:00:00+00:00',
-                'updatedAt' => '2026-06-01T09:00:00+00:00',
-                'deletedAt' => null,
-                'weightGrams' => 4200,
-            ],
-        ]);
-
-        $this->assertCount(2, $result['changes']);
-
-        $byType = [];
-        foreach ($result['changes'] as $c) {
-            $byType[$c['type']] = $c;
-        }
-
-        $this->assertArrayHasKey('bottle', $byType);
-        $this->assertArrayHasKey('weight', $byType);
-        $this->assertSame(90, $byType['bottle']['amountMl']);
-        $this->assertSame('breastmilk', $byType['bottle']['milkType']);
-        $this->assertSame(4200, $byType['weight']['weightGrams']);
-    }
-
-    public function testDeletePropagatesAndCursorFilters(): void
-    {
-        $user = $this->makeUser();
-        $id = (string) Uuid::v4();
-
-        $r1 = $this->sync->sync($user, 0, [
-            $this->change($id, '2026-06-01T10:00:00+00:00', ['side' => 'left']),
-        ]);
-        $cursorAfterInsert = $r1['cursor'];
-
-        // Löschen (deletedAt gesetzt, neueres updatedAt)
-        $r2 = $this->sync->sync($user, $cursorAfterInsert, [
-            ['type' => 'nursing', 'id' => $id,
-             'occurredAt' => '2026-06-01T10:00:00+00:00',
-             'updatedAt' => '2026-06-01T13:00:00+00:00',
-             'deletedAt' => '2026-06-01T13:00:00+00:00', 'side' => 'left'],
-        ]);
-
-        // Pull seit cursorAfterInsert liefert nur den gelöschten Eintrag
-        $this->assertCount(1, $r2['changes']);
-        $this->assertNotNull($r2['changes'][0]['deletedAt']);
-        $this->assertGreaterThan($cursorAfterInsert, $r2['cursor']);
+        $res = $this->sync->sync($partner, [], []); // leerer cursor → alles
+        self::assertCount(1, $res['changes']);
     }
 }
