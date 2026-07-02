@@ -31,7 +31,8 @@ Requirements: Docker (Compose) and Node.js 22+.
 docker compose up -d --build
 docker compose exec php composer install
 
-# 2. JWT keypair (one-time). Put a passphrase into backend/.env.local first:
+# 2. JWT keypair (one-time). Put the same passphrase into backend/.env.local
+#    AND backend/.env.test.local (the test env does not read .env.local):
 #      JWT_PASSPHRASE=<openssl rand -hex 32>
 docker compose exec php bin/console lexik:jwt:generate-keypair
 

@@ -2,6 +2,7 @@
 /backend/vendor/
 /backend/var/
 /backend/.env.local
+/backend/.env.*.local
 /backend/config/jwt/
 /frontend/node_modules/
 /frontend/dist/
