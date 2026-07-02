@@ -79,3 +79,7 @@ With [Watchtower](https://containrrr.dev/watchtower/) running on the host, deplo
 automatic: push to `master` → GitHub Actions builds and pushes `:latest` → Watchtower pulls
 and restarts the containers (`php` and `web` are labeled opt-in; the database is excluded).
 Migrations run on container start, and clients pick up the new build through the PWA update flow.
+
+## License
+
+[MIT](LICENSE)
