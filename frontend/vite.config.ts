@@ -13,9 +13,10 @@ function git(cmd: string, fallback: string): string {
   }
 }
 
-const build = Number(git('git rev-list --count HEAD', '0'))
-const sha = git('git rev-parse --short HEAD', 'dev')
-const date = git('git log -1 --format=%cs', new Date().toISOString().slice(0, 10))
+// CI builds run without a .git directory and pass these via docker build args.
+const build = Number(process.env.BUILD_NUMBER || git('git rev-list --count HEAD', '0'))
+const sha = process.env.GIT_SHA || git('git rev-parse --short HEAD', 'dev')
+const date = process.env.GIT_DATE || git('git log -1 --format=%cs', new Date().toISOString().slice(0, 10))
 const versionString = `Version ${build > 0 ? build : sha} · ${sha} · ${date}`
 
 const emitVersionJson = {
