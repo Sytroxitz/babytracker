@@ -1,0 +1,27 @@
+# Production PHP-FPM image with the backend code baked in.
+# Build context is the repository root:
+#   docker build -f docker/php/Dockerfile.prod .
+FROM php:8.3-fpm-alpine
+
+RUN apk add --no-cache icu-dev openssl \
+    && docker-php-ext-install pdo_mysql intl opcache \
+    && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+COPY docker/php/prod-php.ini /usr/local/etc/php/conf.d/zz-prod.ini
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+ENV APP_ENV=prod
+WORKDIR /app
+
+# Install dependencies first so this layer is cached across code-only changes.
+COPY backend/composer.json backend/composer.lock backend/symfony.lock ./
+RUN composer install --no-dev --no-scripts --prefer-dist --no-progress --no-interaction
+
+COPY backend/ .
+RUN composer dump-autoload --optimize --classmap-authoritative
+
+COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["php-fpm"]

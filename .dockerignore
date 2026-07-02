@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.superpowers
+docs
+backend/vendor
+backend/var
+backend/.env.local
+backend/config/jwt
+backend/tests
+frontend/node_modules
+frontend/dist
+docker-compose.yml
+docker-compose.prod.yml
