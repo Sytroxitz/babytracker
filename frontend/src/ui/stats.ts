@@ -1,15 +1,40 @@
 import type { LogRecord } from '../types'
 
+/** Completed calendar years, months and days since the child's birth date. */
+export function formatChildAge(birthDate: string, now: Date): string {
+  const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number)
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const birth = Date.UTC(birthYear, birthMonth - 1, birthDay)
+  if (today <= birth) return '0 Jahre, 0 Monate, 0 Tage'
+
+  const anniversary = (months: number) => {
+    const monthStart = new Date(Date.UTC(birthYear, birthMonth - 1 + months, 1))
+    const year = monthStart.getUTCFullYear()
+    const month = monthStart.getUTCMonth()
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+    return Date.UTC(year, month, Math.min(birthDay, lastDay))
+  }
+
+  let totalMonths = (now.getFullYear() - birthYear) * 12 + now.getMonth() - (birthMonth - 1)
+  if (anniversary(totalMonths) > today) totalMonths--
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+  const days = Math.round((today - anniversary(totalMonths)) / 86400000)
+  return `${years} ${years === 1 ? 'Jahr' : 'Jahre'}, ${months} ${months === 1 ? 'Monat' : 'Monate'}, ${days} ${days === 1 ? 'Tag' : 'Tage'}`
+}
+
 export interface FeedingStats {
   totalFeeds: number
   lastFeedAt: string | null
   /** ISO timestamp of the predicted next feeding (lastFeed + interval), or null. */
   nextFeedAt: string | null
   feedsToday: number
+  feedsYesterday: number
   feedsPerDay: number
   avgIntervalMin: number | null
   avgBottleMl: number | null
   bottleMlToday: number
+  bottleMlYesterday: number
   nursingCount: number
   bottleCount: number
 }
@@ -43,6 +68,9 @@ export function computeFeedingStats(
     : null
 
   const feedsToday = feeds.filter((r) => sameDay(new Date(r.occurredAt), now)).length
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const feedsYesterday = feeds.filter((r) => sameDay(new Date(r.occurredAt), yesterday)).length
 
   let avgIntervalMin: number | null = null
   if (feeds.length >= 2) {
@@ -60,19 +88,60 @@ export function computeFeedingStats(
   const bottleMlToday = bottles
     .filter((r) => sameDay(new Date(r.occurredAt), now))
     .reduce((s, r) => s + (r.amountMl ?? 0), 0)
+  const bottleMlYesterday = bottles
+    .filter((r) => sameDay(new Date(r.occurredAt), yesterday))
+    .reduce((s, r) => s + (r.amountMl ?? 0), 0)
 
   return {
     totalFeeds: feeds.length,
     lastFeedAt: last?.occurredAt ?? null,
     nextFeedAt,
     feedsToday,
+    feedsYesterday,
     feedsPerDay: Math.round((feeds.length / windowDays) * 10) / 10,
     avgIntervalMin,
     avgBottleMl,
     bottleMlToday,
+    bottleMlYesterday,
     nursingCount: feeds.filter((r) => r.type === 'nursing').length,
     bottleCount: bottles.length,
   }
+}
+
+/** Compare the rolling last seven days with the immediately preceding seven days. */
+export function compareFeedingWeeks(
+  logs: LogRecord[],
+  intervalMin: number,
+  now: Date,
+): { current: FeedingStats; previous: FeedingStats } {
+  const end = now.getTime()
+  const middle = end - 7 * 86400000
+  const start = middle - 7 * 86400000
+  const currentLogs = logs.filter((r) => {
+    const time = Date.parse(r.occurredAt)
+    return time >= middle && time < end
+  })
+  const previousLogs = logs.filter((r) => {
+    const time = Date.parse(r.occurredAt)
+    return time >= start && time < middle
+  })
+  return {
+    current: computeFeedingStats(currentLogs, intervalMin, now),
+    previous: computeFeedingStats(previousLogs, intervalMin, new Date(middle)),
+  }
+}
+
+/** Compact signed change for a statistic badge. */
+export function formatStatDelta(current: number | null, previous: number | null, unit: string, decimals = 0): string {
+  if (current == null || previous == null) return 'Kein Vergleich'
+  const difference = Number((current - previous).toFixed(decimals))
+  const sign = difference > 0 ? '+' : difference < 0 ? '−' : '±'
+  const amount = Math.abs(difference).toLocaleString('de-DE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  })
+  const change = unit === 'Min' ? formatDuration(Math.abs(difference)) : `${amount}${unit ? ` ${unit}` : ''}`
+  return `${sign}${change}`
 }
 
 export interface SideInfo {

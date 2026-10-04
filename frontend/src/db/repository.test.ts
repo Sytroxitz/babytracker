@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from 'vitest'
 import { createDb, type AppDB } from './database'
-import { addLog, updateLog, softDeleteLog, getLogsByDay, getWeightSeries } from './repository'
+import { addLog, updateLog, softDeleteLog, getLogsByDay, getWeightSeries, getHeightSeries } from './repository'
 
 let db: AppDB
 beforeEach(async () => {
@@ -52,6 +52,16 @@ test('getWeightSeries returns weights ascending', async () => {
   await addLog(db, 'child1', null, { type: 'nursing', occurredAt: '2026-06-01T09:00:00Z', side: 'left' })
   const series = await getWeightSeries(db, 'child1')
   expect(series.map((r) => r.weightGrams)).toEqual([4000, 4100])
+})
+
+test('getHeightSeries returns only this child’s active height measurements in date order', async () => {
+  await addLog(db, 'child1', null, { type: 'height', occurredAt: '2026-06-02T08:00:00Z', heightCm: 54.5 })
+  const first = await addLog(db, 'child1', null, { type: 'height', occurredAt: '2026-06-01T08:00:00Z', heightCm: 53 })
+  await addLog(db, 'child2', null, { type: 'height', occurredAt: '2026-06-01T08:00:00Z', heightCm: 60 })
+  await addLog(db, 'child1', null, { type: 'weight', occurredAt: '2026-06-01T08:00:00Z', weightGrams: 4000 })
+  expect((await getHeightSeries(db, 'child1')).map((r) => r.heightCm)).toEqual([53, 54.5])
+  await softDeleteLog(db, first.id)
+  expect((await getHeightSeries(db, 'child1')).map((r) => r.heightCm)).toEqual([54.5])
 })
 
 test('addLog stamps childId + creator; getLogsByDay filters by child', async () => {

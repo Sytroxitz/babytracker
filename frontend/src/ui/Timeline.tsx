@@ -34,6 +34,8 @@ function details(r: LogRecord): string {
       return `${r.amountMl} ml`
     case 'weight':
       return `${r.weightGrams} g`
+    case 'height':
+      return `${r.heightCm} cm`
   }
 }
 
@@ -63,8 +65,8 @@ export function Timeline({ child }: { child: Child }) {
   const load = useCallback(async () => {
     const [s, e] = dayBounds(day)
     const all = await getLogsByDay(db, child.id, s, e)
-    // Gewicht erscheint auf der Gewichtsseite – hier nur Fütter-Einträge.
-    setRows(all.filter((r) => r.type !== 'weight'))
+    // Measurements appear on the growth page; the timeline only shows feeding entries.
+    setRows(all.filter((r) => r.type !== 'weight' && r.type !== 'height'))
   }, [day, child.id])
 
   useEffect(() => {

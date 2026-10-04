@@ -10,6 +10,8 @@ import { Timeline } from './ui/Timeline'
 import { WeightPage } from './ui/WeightPage'
 import { StatsPage } from './ui/StatsPage'
 import { UpdateBanner } from './ui/UpdateBanner'
+import { ChangelogNotice } from './ui/ChangelogNotice'
+import { AboutPage } from './ui/AboutPage'
 import { syncController } from './sync/syncController'
 import { db, getMeta, setMeta } from './db/database'
 import { useReminders } from './sync/useReminders'
@@ -17,7 +19,7 @@ import { notificationPermission, requestNotificationPermission } from './notific
 import { registerPwa, checkLatestVersion, hardReset, type PwaControls } from './pwa/updates'
 import { APP_VERSION, APP_BUILD } from './version'
 
-type Tab = 'entry' | 'timeline' | 'stats' | 'weight'
+type Tab = 'entry' | 'timeline' | 'stats' | 'weight' | 'about'
 
 function useOnline(): boolean {
   const [online, setOnline] = useState(() =>
@@ -67,14 +69,14 @@ const NAV: { tab: Tab; label: string; icon: ReactNode }[] = [
   },
   {
     tab: 'weight',
-    label: 'Gewicht',
+    label: 'Wachstum',
     icon: (
       <path d="M4 16l5-5 4 3 7-7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     ),
   },
 ]
 
-export default function App() {
+function AppContent() {
   const auth = useAuth()
   const children = useChildren()
   const [tab, setTab] = useState<Tab>('entry')
@@ -210,16 +212,18 @@ export default function App() {
               appVersion={APP_VERSION}
               onCheckUpdates={checkForUpdates}
               onHardReset={() => void hardReset()}
+              onOpenAbout={() => setTab('about')}
             />
           )}
           {tab === 'weight' && <WeightPage child={activeChild} myUserId={children.myUserId} />}
+          {tab === 'about' && <AboutPage version={APP_VERSION} onBack={() => setTab('stats')} />}
         </div>
       </main>
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 inset-x-0 z-20 h-nav pb-safe grid grid-cols-4 bg-neutral-950/80 backdrop-blur-md border-t border-white/8">
         {NAV.map(({ tab: t, label, icon }) => {
-          const activeTab = tab === t
+          const activeTab = tab === t || (tab === 'about' && t === 'stats')
           return (
             <button
               key={t}
@@ -267,5 +271,14 @@ export default function App() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <>
+      <AppContent />
+      <ChangelogNotice version={APP_VERSION} />
+    </>
   )
 }

@@ -3,11 +3,13 @@ export function NumberField({
   value,
   onChange,
   suffix,
+  step,
 }: {
   label: string
   value: number | null
   onChange: (n: number | null) => void
   suffix?: string
+  step?: string
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -18,6 +20,7 @@ export function NumberField({
       <input
         type="number"
         inputMode="numeric"
+        step={step}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         className="field"

@@ -3,7 +3,7 @@ import { db, getMeta, setMeta } from '../db/database'
 import { getLogsSince } from '../db/repository'
 import { syncController } from '../sync/syncController'
 import type { Child, LogRecord } from '../types'
-import { computeFeedingStats, formatDuration, formatRelative } from './stats'
+import { compareFeedingWeeks, formatChildAge, formatDuration, formatRelative, formatStatDelta } from './stats'
 import { notificationPermission, notificationsSupported } from '../notifications'
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   appVersion: string
   onCheckUpdates: () => void | Promise<void>
   onHardReset: () => void
+  onOpenAbout: () => void
 }
 
 const INTERVAL_KEY = 'feedIntervalMin'
@@ -29,12 +30,37 @@ function useNow(intervalMs = 30000): Date {
   return now
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+type Comparison = { current: number | null; previous: number | null; unit: string; decimals?: number; period?: string }
+
+function StatCard({ label, value, hint, comparison }: {
+  label: string
+  value: string
+  hint?: string
+  comparison?: Comparison
+}) {
+  const delta = comparison && formatStatDelta(comparison.current, comparison.previous, comparison.unit, comparison.decimals)
+  const difference = comparison?.current != null && comparison.previous != null
+    ? comparison.current - comparison.previous
+    : null
+  const badgeColor = difference == null || difference === 0
+    ? 'bg-white/10 text-neutral-300'
+    : difference > 0
+      ? 'bg-indigo-500/20 text-indigo-200'
+      : 'bg-amber-500/20 text-amber-200'
   return (
     <div className="card p-3.5">
       <div className="text-xs text-neutral-400">{label}</div>
       <div className="text-xl font-bold mt-1 leading-tight">{value}</div>
       {hint && <div className="text-xs text-neutral-500 mt-0.5">{hint}</div>}
+      {delta && (
+        <span
+          className={`inline-block mt-2 rounded-full px-2 py-0.5 text-xs font-medium ${badgeColor}`}
+          aria-label={`${delta} gegenüber ${comparison?.period ?? 'den 7 Tagen davor'}`}
+          title={`Vergleich mit ${comparison?.period ?? 'den 7 Tagen davor'}`}
+        >
+          {delta}
+        </span>
+      )}
     </div>
   )
 }
@@ -46,6 +72,7 @@ export function StatsPage({
   appVersion,
   onCheckUpdates,
   onHardReset,
+  onOpenAbout,
 }: Props) {
   const now = useNow()
   const [checking, setChecking] = useState(false)
@@ -63,7 +90,7 @@ export function StatsPage({
   const [ready, setReady] = useState(false)
 
   const reloadLogs = useCallback(async () => {
-    const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
+    const since = new Date(Date.now() - WINDOW_DAYS * 2 * 86400000).toISOString()
     setLogs(await getLogsSince(db, child.id, since))
   }, [child.id])
 
@@ -87,7 +114,7 @@ export function StatsPage({
 
   if (!ready) return null
 
-  const s = computeFeedingStats(logs, intervalMin, now, WINDOW_DAYS)
+  const { current: s, previous } = compareFeedingWeeks(logs, intervalMin, now)
   const next = s.nextFeedAt ? formatRelative(Date.parse(s.nextFeedAt), now.getTime()) : null
   const fmtTime = (iso: string | null) =>
     iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–'
@@ -95,6 +122,8 @@ export function StatsPage({
   return (
     <div className="p-4 max-w-md mx-auto flex flex-col gap-4 animate-fade-in-up">
       <h2 className="text-xl font-semibold">Statistik &amp; Prognose</h2>
+
+      <StatCard label={`Alter von ${child.name}`} value={formatChildAge(child.birthDate, now)} />
 
       {/* Prediction hero */}
       {s.nextFeedAt ? (
@@ -206,22 +235,48 @@ export function StatsPage({
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Mahlzeiten heute" value={String(s.feedsToday)} />
+        <StatCard
+          label="Mahlzeiten heute"
+          value={String(s.feedsToday)}
+          comparison={{ current: s.feedsToday, previous: s.feedsYesterday, unit: '', period: 'gestern' }}
+        />
         <StatCard label="Letzte Mahlzeit" value={fmtTime(s.lastFeedAt)} />
         <StatCard
           label="Ø Intervall"
           value={s.avgIntervalMin != null ? formatDuration(s.avgIntervalMin) : '–'}
           hint={`letzte ${WINDOW_DAYS} Tage`}
+          comparison={{ current: s.avgIntervalMin, previous: previous.avgIntervalMin, unit: 'Min' }}
         />
-        <StatCard label="Mahlzeiten / Tag" value={String(s.feedsPerDay)} hint={`Ø ${WINDOW_DAYS} Tage`} />
-        <StatCard label="Ø Flasche" value={s.avgBottleMl != null ? `${s.avgBottleMl} ml` : '–'} />
-        <StatCard label="Flasche heute" value={`${s.bottleMlToday} ml`} />
+        <StatCard
+          label="Mahlzeiten / Tag"
+          value={String(s.feedsPerDay)}
+          hint={`Ø ${WINDOW_DAYS} Tage`}
+          comparison={{ current: s.feedsPerDay, previous: previous.totalFeeds > 0 ? previous.feedsPerDay : null, unit: '/Tag', decimals: 1 }}
+        />
+        <StatCard
+          label="Ø Flasche"
+          value={s.avgBottleMl != null ? `${s.avgBottleMl} ml` : '–'}
+          hint={`Ø ${WINDOW_DAYS} Tage`}
+          comparison={{ current: s.avgBottleMl, previous: previous.avgBottleMl, unit: 'ml' }}
+        />
+        <StatCard
+          label="Flasche heute"
+          value={`${s.bottleMlToday} ml`}
+          comparison={{ current: s.bottleMlToday, previous: s.bottleMlYesterday, unit: 'ml', period: 'gestern' }}
+        />
       </div>
 
       {/* App & updates */}
       <div className="card p-4">
         <div className="text-sm font-medium text-neutral-300">App</div>
         <div className="text-xs text-neutral-500 mt-0.5">{appVersion}</div>
+        <button
+          type="button"
+          onClick={onOpenAbout}
+          className="mt-3 w-full min-h-11 rounded-xl bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/30"
+        >
+          Über die App &amp; Änderungen
+        </button>
         <div className="grid grid-cols-2 gap-2 mt-3">
           <button
             type="button"
@@ -243,6 +298,7 @@ export function StatsPage({
 
       <p className="text-xs text-neutral-500 text-center">
         Prognose & Statistik basieren auf Still- und Flaschen-Einträgen der letzten {WINDOW_DAYS} Tage.
+        {' '}Durchschnittswerte werden mit den {WINDOW_DAYS} Tagen davor verglichen.
       </p>
     </div>
   )

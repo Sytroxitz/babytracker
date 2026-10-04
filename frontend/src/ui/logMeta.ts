@@ -29,9 +29,15 @@ export const TYPE_META: Record<
     tile: 'from-emerald-500/25 to-emerald-500/5 border-emerald-400/20',
     chip: 'bg-emerald-500/15 text-emerald-200',
   },
+  height: {
+    label: 'Größe',
+    icon: '📏',
+    tile: 'from-sky-500/25 to-sky-500/5 border-sky-400/20',
+    chip: 'bg-sky-500/15 text-sky-200',
+  },
 }
 
-export const TYPE_ORDER: LogType[] = ['nursing', 'pumping', 'bottle', 'weight']
+export const TYPE_ORDER: LogType[] = ['nursing', 'pumping', 'bottle', 'weight', 'height']
 
-/** Types entered from the "Erfassen" quick-entry screen (weight lives on its own page). */
-export const ENTRY_TYPES: LogType[] = ['nursing', 'pumping', 'bottle']
+/** Types entered from the "Erfassen" quick-entry screen. */
+export const ENTRY_TYPES: LogType[] = ['nursing', 'pumping', 'bottle', 'weight', 'height']

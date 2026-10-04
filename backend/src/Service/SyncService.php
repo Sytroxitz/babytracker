@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\BottleLog;
 use App\Entity\Child;
 use App\Entity\ChildMembership;
+use App\Entity\HeightLog;
 use App\Entity\Contract\Syncable;
 use App\Entity\NursingLog;
 use App\Entity\PumpingLog;
@@ -21,6 +22,7 @@ class SyncService
         'pumping' => PumpingLog::class,
         'bottle' => BottleLog::class,
         'weight' => WeightLog::class,
+        'height' => HeightLog::class,
     ];
 
     public function __construct(private EntityManagerInterface $em) {}

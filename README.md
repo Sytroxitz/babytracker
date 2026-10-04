@@ -1,7 +1,7 @@
 # BabyTracker
 
 A self-hosted, offline-first PWA for tracking a baby's daily life: breastfeeding, pumping,
-bottle feeds and weight. Built for two parents sharing one (or more) children — entries sync
+bottle feeds, weight and height. Built for two parents sharing one (or more) children — entries sync
 live between partners, and the app keeps working without a network connection.
 
 ## Features

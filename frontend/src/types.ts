@@ -1,4 +1,4 @@
-export type LogType = 'nursing' | 'pumping' | 'bottle' | 'weight'
+export type LogType = 'nursing' | 'pumping' | 'bottle' | 'weight' | 'height'
 export type Side = 'left' | 'right' | 'both'
 export type StorageLocation = 'fridge' | 'freezer'
 export type Gender = 'male' | 'female' | 'diverse'
@@ -37,6 +37,8 @@ export interface LogRecord {
   milkType?: string | null
   // weight
   weightGrams?: number | null
+  // height
+  heightCm?: number | null
 }
 
 /** Vom Server geliefertes Change-Objekt (wie LogRecord, aber ohne lokale Flags). */
@@ -54,3 +56,4 @@ export type NewLogInput =
   | { type: 'pumping'; occurredAt: string; amountMl: number; side?: Side | null; storageLocation?: StorageLocation | null; note?: string | null }
   | { type: 'bottle'; occurredAt: string; amountMl: number; note?: string | null }
   | { type: 'weight'; occurredAt: string; weightGrams: number; note?: string | null }
+  | { type: 'height'; occurredAt: string; heightCm: number; note?: string | null }
