@@ -32,6 +32,30 @@ test('logging a bottle stores a dirty breastmilk record', async () => {
   expect(rows[0]).toMatchObject({ type: 'bottle', amountMl: 90, milkType: 'breastmilk', dirty: 1 })
 })
 
+test('weight button opens a form and saves grams from the start page', async () => {
+  render(<QuickEntry child={sampleChild} myUserId="u1" />)
+  await userEvent.click(screen.getByRole('button', { name: /gewicht/i }))
+  await userEvent.type(screen.getByLabelText('Gewicht (g)'), '4200')
+  await userEvent.click(screen.getByRole('button', { name: /speichern/i }))
+  await waitFor(async () => {
+    expect(await db.logs.toArray()).toEqual([expect.objectContaining({
+      type: 'weight', weightGrams: 4200, childId: 'c1', dirty: 1,
+    })])
+  })
+})
+
+test('height button opens a form and saves centimetres from the start page', async () => {
+  render(<QuickEntry child={sampleChild} myUserId="u1" />)
+  await userEvent.click(screen.getByRole('button', { name: /größe/i }))
+  await userEvent.type(screen.getByLabelText('Größe (cm)'), '52.5')
+  await userEvent.click(screen.getByRole('button', { name: /speichern/i }))
+  await waitFor(async () => {
+    expect(await db.logs.toArray()).toEqual([expect.objectContaining({
+      type: 'height', heightCm: 52.5, childId: 'c1', dirty: 1,
+    })])
+  })
+})
+
 test('side recommendation: tap a side, pick Stillen → logs nursing immediately for that side', async () => {
   // Seed a left-side nursing → recommended next side is "right".
   await addLog(db, 'c1', null, { type: 'nursing', occurredAt: new Date().toISOString(), side: 'left' })

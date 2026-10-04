@@ -1,9 +1,12 @@
 import { expect, test } from 'vitest'
 import {
   computeFeedingStats,
+  compareFeedingWeeks,
+  formatStatDelta,
   decideReminders,
   formatDuration,
   formatRelative,
+  formatChildAge,
   lastEntryAt,
   lastSide,
 } from './stats'
@@ -43,9 +46,11 @@ test('computeFeedingStats predicts next feed and aggregates correctly', () => {
   expect(s.lastFeedAt).toBe(at(11))
   expect(s.nextFeedAt).toBe(new Date(Date.parse(at(11)) + 180 * 60000).toISOString())
   expect(s.feedsToday).toBe(3) // the 28th is excluded
+  expect(s.feedsYesterday).toBe(0)
   expect(s.avgIntervalMin).toBe(980) // (2640 + 180 + 120) / 3
   expect(s.avgBottleMl).toBe(100) // (80 + 100 + 120) / 3
   expect(s.bottleMlToday).toBe(220) // 100 + 120 (deleted 200 excluded)
+  expect(s.bottleMlYesterday).toBe(0)
   expect(s.feedsPerDay).toBe(0.6) // 4 / 7
   expect(s.nursingCount).toBe(1)
   expect(s.bottleCount).toBe(3)
@@ -64,6 +69,57 @@ test('formatDuration formats hours and minutes', () => {
   expect(formatDuration(195)).toBe('3 Std 15 Min')
   expect(formatDuration(45)).toBe('45 Min')
   expect(formatDuration(120)).toBe('2 Std')
+})
+
+test('computeFeedingStats counts yesterday by local calendar day', () => {
+  const now = new Date(2026, 6, 1, 8)
+  const logs = [
+    rec({ type: 'nursing', occurredAt: new Date(2026, 5, 30, 7).toISOString(), side: 'left' }),
+    rec({ type: 'bottle', occurredAt: new Date(2026, 5, 30, 23, 59).toISOString(), amountMl: 90 }),
+    rec({ type: 'bottle', occurredAt: new Date(2026, 5, 30, 8).toISOString(), amountMl: 60 }),
+    rec({ type: 'bottle', occurredAt: new Date(2026, 6, 1, 7).toISOString(), amountMl: 100 }),
+    rec({ type: 'weight', occurredAt: new Date(2026, 5, 30, 12).toISOString(), weightGrams: 4000 }),
+    rec({ type: 'bottle', occurredAt: new Date(2026, 5, 30, 12).toISOString(), amountMl: 80, deletedAt: now.toISOString() }),
+  ]
+  expect(computeFeedingStats(logs, 180, now)).toMatchObject({
+    feedsToday: 1, feedsYesterday: 3, bottleMlToday: 100, bottleMlYesterday: 150,
+  })
+})
+
+test('compareFeedingWeeks separates consecutive seven-day windows at the boundary', () => {
+  const now = new Date('2026-10-14T12:00:00Z')
+  const logs = [
+    rec({ type: 'bottle', occurredAt: '2026-09-30T11:59:59Z', amountMl: 999 }), // outside both windows
+    rec({ type: 'bottle', occurredAt: '2026-10-01T12:00:00Z', amountMl: 80 }),
+    rec({ type: 'bottle', occurredAt: '2026-10-03T12:00:00Z', amountMl: 100 }),
+    rec({ type: 'bottle', occurredAt: '2026-10-07T12:00:00Z', amountMl: 120 }), // current start
+    rec({ type: 'bottle', occurredAt: '2026-10-09T12:00:00Z', amountMl: 140 }),
+    rec({ type: 'nursing', occurredAt: '2026-10-10T12:00:00Z', side: 'left' }),
+    rec({ type: 'bottle', occurredAt: '2026-10-11T12:00:00Z', amountMl: 500, deletedAt: '2026-10-11T13:00:00Z' }),
+  ]
+  const { current, previous } = compareFeedingWeeks(logs, 180, now)
+  expect(previous).toMatchObject({ totalFeeds: 2, feedsPerDay: 0.3, avgBottleMl: 90, avgIntervalMin: 2880 })
+  expect(current).toMatchObject({ totalFeeds: 3, feedsPerDay: 0.4, avgBottleMl: 130, avgIntervalMin: 2160 })
+})
+
+test('formatStatDelta describes increase, decrease and missing comparison', () => {
+  expect(formatStatDelta(0.4, 0.3, '/Tag', 1)).toBe('+0,1 /Tag')
+  expect(formatStatDelta(90, 130, 'ml')).toBe('−40 ml')
+  expect(formatStatDelta(900, 180, 'Min')).toBe('+12 Std')
+  expect(formatStatDelta(100, 100, 'ml')).toBe('±0 ml')
+  expect(formatStatDelta(100, null, 'ml')).toBe('Kein Vergleich')
+  expect(formatStatDelta(1, 2, '')).toBe('−1')
+})
+
+test('formatChildAge uses calendar years, months and days', () => {
+  expect(formatChildAge('2024-03-15', new Date(2026, 9, 4))).toBe('2 Jahre, 6 Monate, 19 Tage')
+  expect(formatChildAge('2025-09-03', new Date(2026, 9, 4))).toBe('1 Jahr, 1 Monat, 1 Tag')
+  expect(formatChildAge('2026-10-04', new Date(2026, 9, 4))).toBe('0 Jahre, 0 Monate, 0 Tage')
+})
+
+test('formatChildAge handles month ends and leap-day birthdays', () => {
+  expect(formatChildAge('2026-01-31', new Date(2026, 1, 28))).toBe('0 Jahre, 1 Monat, 0 Tage')
+  expect(formatChildAge('2024-02-29', new Date(2025, 1, 28))).toBe('1 Jahr, 0 Monate, 0 Tage')
 })
 
 test('formatRelative describes future and overdue', () => {

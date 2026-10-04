@@ -20,6 +20,8 @@ export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string
   const [when, setWhen] = useState(() => toLocalInput(new Date()))
   const [side, setSide] = useState<Side | null>(null)
   const [amountMl, setAmountMl] = useState<number | null>(null)
+  const [weightGrams, setWeightGrams] = useState<number | null>(null)
+  const [heightCm, setHeightCm] = useState<number | null>(null)
   const [durationMinutes, setDuration] = useState<number | null>(null)
   const [storageLocation, setStorage] = useState<StorageLocation | null>(null)
   const [note, setNote] = useState('')
@@ -50,6 +52,8 @@ export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string
     setWhen(toLocalInput(new Date()))
     setSide(null)
     setAmountMl(null)
+    setWeightGrams(null)
+    setHeightCm(null)
     setDuration(null)
     setStorage(null)
     setNote('')
@@ -102,6 +106,14 @@ export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string
       case 'bottle':
         if (amountMl == null) return
         input = { type: 'bottle', occurredAt, amountMl, note: n }
+        break
+      case 'weight':
+        if (weightGrams == null || !Number.isFinite(weightGrams) || weightGrams <= 0) return
+        input = { type: 'weight', occurredAt, weightGrams, note: n }
+        break
+      case 'height':
+        if (heightCm == null || !Number.isFinite(heightCm) || heightCm <= 0) return
+        input = { type: 'height', occurredAt, heightCm, note: n }
         break
       default:
         return
@@ -331,13 +343,15 @@ export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string
         </>
       )}
       {active === 'bottle' && <NumberField label="Menge" suffix="ml" value={amountMl} onChange={setAmountMl} />}
+      {active === 'weight' && <NumberField label="Gewicht" suffix="g" value={weightGrams} onChange={setWeightGrams} />}
+      {active === 'height' && <NumberField label="Größe" suffix="cm" step="0.1" value={heightCm} onChange={setHeightCm} />}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-neutral-300">Notiz (optional)</span>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="z. B. unruhig, gut getrunken …"
+          placeholder={active === 'weight' || active === 'height' ? 'z. B. bei der Vorsorge' : 'z. B. unruhig, gut getrunken …'}
           className="field"
         />
       </div>
@@ -346,7 +360,11 @@ export function QuickEntry({ child, myUserId }: { child: Child; myUserId: string
         <Button type="button" variant="secondary" onClick={reset}>
           Abbrechen
         </Button>
-        <Button type="submit" loading={saving}>
+        <Button
+          type="submit"
+          loading={saving}
+          disabled={active === 'weight' ? weightGrams == null || weightGrams <= 0 : active === 'height' ? heightCm == null || heightCm <= 0 : false}
+        >
           {saving ? 'Speichert …' : 'Speichern'}
         </Button>
       </div>

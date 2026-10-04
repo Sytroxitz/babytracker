@@ -29,6 +29,9 @@ export async function addLog(db: AppDB, childId: string, createdByUserId: string
     case 'weight':
       rec = { ...base, type: 'weight', weightGrams: input.weightGrams }
       break
+    case 'height':
+      rec = { ...base, type: 'height', heightCm: input.heightCm }
+      break
   }
   await db.logs.put(rec)
   return rec
@@ -53,8 +56,16 @@ export async function getLogsByDay(db: AppDB, childId: string, dayStartIso: stri
 }
 
 export async function getWeightSeries(db: AppDB, childId: string): Promise<LogRecord[]> {
+  return getMeasurementSeries(db, childId, 'weight')
+}
+
+export async function getHeightSeries(db: AppDB, childId: string): Promise<LogRecord[]> {
+  return getMeasurementSeries(db, childId, 'height')
+}
+
+async function getMeasurementSeries(db: AppDB, childId: string, type: 'weight' | 'height'): Promise<LogRecord[]> {
   const rows = await db.logs
-    .where('type').equals('weight')
+    .where('type').equals(type)
     .filter((r) => r.childId === childId && r.deletedAt === null)
     .toArray()
   return rows.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))

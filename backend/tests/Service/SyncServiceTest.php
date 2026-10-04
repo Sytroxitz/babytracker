@@ -112,6 +112,27 @@ final class SyncServiceTest extends KernelTestCase
         self::assertSame($cid, $res['children'][0]['id']);
     }
 
+    public function test_height_measurement_syncs_with_decimal_centimetres(): void
+    {
+        $owner = $this->user('height-owner@b.c');
+        $child = $this->childWithMember($owner);
+        $this->em->flush();
+        $cid = (string) $child->getId();
+        $change = [
+            'id' => (string) Uuid::v4(), 'type' => 'height', 'childId' => $cid,
+            'occurredAt' => '2026-02-01T10:00:00+00:00',
+            'updatedAt' => '2026-02-01T10:00:00+00:00',
+            'deletedAt' => null, 'heightCm' => 52.5, 'note' => 'Vorsorge',
+        ];
+
+        $result = $this->sync->sync($owner, [], [$change]);
+        self::assertSame('height', $result['changes'][0]['type']);
+        self::assertSame(52.5, $result['changes'][0]['heightCm']);
+        self::assertSame('Vorsorge', $result['changes'][0]['note']);
+        self::assertSame(1, $result['cursors'][$cid]);
+        self::assertSame(52.5, $this->sync->sync($owner, [], [])['changes'][0]['heightCm']);
+    }
+
     public function test_changes_for_non_member_child_are_ignored(): void
     {
         $owner = $this->user('owner@b.c');
