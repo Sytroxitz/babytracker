@@ -1,10 +1,11 @@
 # Production PHP-FPM image with the backend code baked in.
 # Build context is the repository root:
 #   docker build -f docker/php/Dockerfile.prod .
-FROM php:8.3-fpm-alpine
+FROM php:8.5.12-fpm-alpine
 
+# OPcache is built into PHP 8.5; installing it via docker-php-ext-install fails.
 RUN apk add --no-cache icu-dev openssl \
-    && docker-php-ext-install pdo_mysql intl opcache \
+    && docker-php-ext-install pdo_mysql intl \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 COPY docker/php/prod-php.ini /usr/local/etc/php/conf.d/zz-prod.ini

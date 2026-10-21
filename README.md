@@ -18,7 +18,7 @@ live between partners, and the app keeps working without a network connection.
 | Part | Tech |
 |---|---|
 | Frontend | React 19, Vite (PWA plugin), Tailwind CSS, Dexie (IndexedDB) |
-| Backend | Symfony 7.4 (PHP 8.3), Doctrine ORM, LexikJWTAuthenticationBundle |
+| Backend | Symfony 7.4 (PHP 8.5), Doctrine ORM, LexikJWTAuthenticationBundle |
 | Database | MySQL 8 |
 | Delivery | Docker images via GitHub Actions → GHCR, auto-deployed by Watchtower |
 

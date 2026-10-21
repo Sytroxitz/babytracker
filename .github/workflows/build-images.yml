@@ -46,6 +46,8 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
+          # Always pull the base image so PHP security updates are picked up.
+          pull: true
           tags: |
             ghcr.io/${{ steps.version.outputs.owner }}/${{ matrix.image }}:latest
             ghcr.io/${{ steps.version.outputs.owner }}/${{ matrix.image }}:${{ steps.version.outputs.sha }}
