@@ -9,6 +9,7 @@
 - Mahlzeiten und Flaschenmenge von heute mit gestern vergleichen.
 - Änderungen einer neuen App-Version beim ersten Öffnen in diesem Fenster anzeigen.
 - Aktuelle und frühere Änderungen jederzeit unter „Über die App“ nachlesen.
+- Technisch: Der Server läuft jetzt auf PHP 8.5 und schließt damit die kritischen Sicherheitslücken vom 21. Oktober 2026.
 
 ## Juli 2026 – App-Icon und Betrieb
 
